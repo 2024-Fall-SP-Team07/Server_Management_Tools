@@ -1,5 +1,7 @@
 #ifndef COMMON_H
+
 #define COMMON_H
+#define ERROR_MSG_LEN 128
 
 typedef struct DateInfo {
     int year;
@@ -11,5 +13,6 @@ typedef struct DateInfo {
 } DateInfo;
 
 DateInfo get_Date();
+char* exception(int, char *, char *);
 
 #endif
