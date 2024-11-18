@@ -33,8 +33,8 @@ void write_CPU_Information(){
     int fd;
     CPU_Info content;
     DIR *dir_ptr = NULL;
-    ((dir_ptr = opendir(LOG_PATH)) == NULL) ? mkdir(LOG_PATH, 750) : closedir(dir_ptr); // Create directory if not exists
-    ((fd = open(CPU_INFO_LOG, O_WRONLY | O_CREAT | O_APPEND, 640)) == -1) ? exception(-1, "write_CPU_Information", "CPU Information Log") : 0; // Create or Open log file
+    ((dir_ptr = opendir(LOG_PATH)) == NULL) ? mkdir(LOG_PATH, (S_IRWXU | S_IRGRP | S_IXGRP) & (~S_IRWXO) ) : closedir(dir_ptr); // Create directory if not exists (750)
+    ((fd = open(CPU_INFO_LOG, O_WRONLY | O_CREAT | O_APPEND, (S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP ) & (~S_IRWXO))) == -1) ? exception(-1, "write_CPU_Information", "CPU Information Log") : 0; // Create or Open log file (640)
     content.date = get_Date();
     content.temp = get_CPU_Temperature();
     content.usage = get_CPU_Jiffies();
