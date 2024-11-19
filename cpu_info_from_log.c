@@ -7,7 +7,7 @@
 #include <fcntl.h>
 
 CPU_Result get_CPU_Information(int boundary){
-    int fd, i;
+    int fd = -1, i = 0;
     CPU_Info priv_buf, cur_buf;
     CPU_Result res;
     float *usage_list = (float*)malloc((boundary + 1) * sizeof(float));
@@ -47,7 +47,7 @@ float calc_CPU_Avg_Temp(float *temp_list, int idx){
 }
 
 float calc_CPU_Usage(CPU_Usage* priv_log, CPU_Usage* cur_log){
-    float usage;
+    float usage = 0;
     usage = 100 * (1 - (((cur_log->idleJiff) - (priv_log->idleJiff)) / (float)((cur_log->totalJiff) - (priv_log->totalJiff))));
     return usage;
 }

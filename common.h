@@ -2,6 +2,7 @@
 
 #define COMMON_H
 #define ERROR_MSG_LEN 128
+#define LOG_PATH "/var/log/00_Resources_Status"
 
 typedef struct DateInfo {
     int year;
