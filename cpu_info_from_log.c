@@ -1,5 +1,3 @@
-#include "common.h"
-#include "cpu_info_struct.h"
 #include "cpu_info_from_log.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,26 +20,18 @@ CPU_Result get_CPU_Information(int boundary){
         temp_list[i] = cur_buf.temp;
     }
     close(fd);
-    res.temp = calc_CPU_Avg_Temp(temp_list, i);
-    res.usage = calc_CPU_Avg_Usage(usage_list, i);
+    res.temp = calc_CPU_Avg_Value(temp_list, i);
+    res.usage = calc_CPU_Avg_Value(usage_list, i);
     free(usage_list);
     free(temp_list);
     printf("%d-%d-%d %d:%d:%d ", cur_buf.date.year, cur_buf.date.month, cur_buf.date.day, cur_buf.date.hrs, cur_buf.date.min, cur_buf.date.sec);
     return res;
 }
 
-float calc_CPU_Avg_Usage(float *usage_list, int idx){
+float calc_CPU_Avg_Value(float *list, int idx){
     float sum = 0;
     for (int i = 0; i < idx; i++){
-        sum += usage_list[i];
-    }
-    return sum / (float)idx;
-}
-
-float calc_CPU_Avg_Temp(float *temp_list, int idx){
-    float sum = 0;
-    for (int i = 0; i < idx; i++){
-        sum += temp_list[i];
+        sum += list[i];
     }
     return sum / (float)idx;
 }

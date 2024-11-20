@@ -1,6 +1,7 @@
 #ifndef MEM_INFO_STRUCT_H
 
 #define MEM_INFO_STRUCT_H
+#define MEM_INFO_LOG "/var/log/00_Resources_Status/MEM_Info"
 
 typedef struct MEM_Size{
     long long mem_total;

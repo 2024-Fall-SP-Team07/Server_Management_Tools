@@ -3,6 +3,7 @@
 #include "common.h"
 
 #define CPU_INFO_STRUCT_H
+#define CPU_INFO_LOG "/var/log/00_Resources_Status/CPU_Info"
 
 typedef struct CPU_Result {
      float temp;
