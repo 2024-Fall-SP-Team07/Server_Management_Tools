@@ -6,6 +6,7 @@
 #define CPU_INFO_LOG "/var/log/00_Resources_Status/CPU_Info"
 
 typedef struct CPU_Result {
+    DateInfo date;
      float temp;
      float usage;
 } CPU_Result;

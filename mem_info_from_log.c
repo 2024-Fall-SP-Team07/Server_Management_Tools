@@ -4,34 +4,29 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-MEM_Size get_Mem_Information(int boundary){
-    int fd = -1, i = 0;
-    MEM_Size res;
-    MEM_Info buf;
-    long long *physical_usage_list = (long long*)malloc(boundary * sizeof(float));
-    long long *swap_usage_list = (long long*)malloc(boundary * sizeof(float));
+MEM_Info get_Mem_Information(int boundary){
+    int fd = -1, idx = 0;
+    MEM_Info buf, res;
+    long long sum_physical_usage = 0, sum_swap_usage = 0;
     ((fd = open(MEM_INFO_LOG, O_RDONLY)) == -1) ? exception(-1, "get_Mem_Information", "Memory Information Log") : 0;
     lseek(fd, -(sizeof(MEM_Info) * boundary), SEEK_END);
-    for (i = 0; i < boundary; i++){
+    for (idx = 0; idx < boundary; idx++){
         (read(fd, &buf, sizeof(MEM_Info)) != sizeof(MEM_Info)) ? exception(-2, "get_Mem_Information", "Memory Information Log") : 0;
-        physical_usage_list[i] = buf.size.mem_free;
-        swap_usage_list[i] = buf.size.swap_free;
+        sum_physical_usage = buf.size.mem_free;
+        sum_swap_usage = buf.size.swap_free;
     }
     close(fd);
-    res.mem_free = calc_Mem_Avg_Value(physical_usage_list, i);
-    res.swap_free = calc_Mem_Avg_Value(swap_usage_list, i);
-    res.mem_total = buf.size.mem_total;
-    res.swap_total = buf.size.swap_total;
-    free(physical_usage_list);
-    free(swap_usage_list);
-    printf("%d-%d-%d %d:%d:%d ", buf.date.year, buf.date.month, buf.date.day, buf.date.hrs, buf.date.min, buf.date.sec);
+    res.size.mem_free = sum_physical_usage / idx;
+    res.size.swap_free = sum_swap_usage / idx;
+    res.size.mem_total = buf.size.mem_total;
+    res.size.swap_total = buf.size.swap_total;
     return res;
 }
 
-long long calc_Mem_Avg_Value(long long *list, int idx){
-    long long sum = 0;
-    for (int i = 0; i < idx; i++){
-        sum += list[i];
+double convert_Size_Unit(long long size, UNIT unit){
+    double res = (double)size;
+    for (int i = 0; i < (int)unit; i++){
+        res /= 1024;
     }
-    return (long long)(sum / idx);
+    return res;
 }

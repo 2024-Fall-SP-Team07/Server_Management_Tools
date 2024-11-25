@@ -21,9 +21,10 @@ DateInfo get_Date(){
 
 char* exception(int code, char *func_name, char *detail){
     static char error_msg[ERROR_MSG_LEN];
-    (code == -1) ? sprintf(error_msg, "(func. - %s) Cannot open file: %s\n", func_name, detail) : 0;
-    (code == -2) ? sprintf(error_msg, "(func. - %s) Cannot Read data: %s\n", func_name, detail) : 0;
-    (code == -3) ? sprintf(error_msg, "(func. - %s) Cannot Write data: %s\n", func_name, detail) : 0;
-    printf("%s\n", error_msg);
+    (code == 0) ? sprintf(error_msg, "N/A: %s", detail) : 0;
+    (code == -1) ? sprintf(error_msg, "(func. - %s) Cannot open file: %s", func_name, detail) : 0;
+    (code == -2) ? sprintf(error_msg, "(func. - %s) Cannot Read data: %s", func_name, detail) : 0;
+    (code == -3) ? sprintf(error_msg, "(func. - %s) Cannot Write data: %s", func_name, detail) : 0;
+    (code == -4) ? sprintf(error_msg, "(func. - %s) Cannot Load data: %s", func_name, detail) : 0;
     return error_msg;
 }

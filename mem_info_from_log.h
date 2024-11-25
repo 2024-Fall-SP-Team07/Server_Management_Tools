@@ -5,7 +5,7 @@
 
 #define MEM_INFO_FROM_LOG_H
 
-MEM_Size get_Mem_Information(int);
-long long calc_Mem_Avg_Value(long long*, int);
+MEM_Info get_Mem_Information(int);
+double convert_Size_Unit(long long, UNIT);
 
 #endif
