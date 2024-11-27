@@ -12,7 +12,7 @@ void get_Hostname(char* buf){
     FILE* fp = NULL;
     char hostname[HOSTNAME_LEN] = { '\0' };
     if ((fp = fopen("/etc/hostname", "r")) == NULL) {
-        strcpy(buf,exception(0, NULL, "hostname"));
+        strcpy(buf, exception(0, NULL, "hostname"));
     }
     fscanf(fp, "%s", hostname);
     fclose(fp);

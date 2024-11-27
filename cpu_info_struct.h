@@ -7,8 +7,8 @@
 
 typedef struct CPU_Result {
     DateInfo date;
-     float temp;
-     float usage;
+    float temp;
+    float usage;
 } CPU_Result;
 
 typedef struct CPU_Usage {

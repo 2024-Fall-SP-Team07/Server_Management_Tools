@@ -22,11 +22,3 @@ MEM_Info get_Mem_Information(int boundary){
     res.size.swap_total = buf.size.swap_total;
     return res;
 }
-
-double convert_Size_Unit(long long size, UNIT unit){
-    double res = (double)size;
-    for (int i = 0; i < (int)unit; i++){
-        res /= 1024;
-    }
-    return res;
-}

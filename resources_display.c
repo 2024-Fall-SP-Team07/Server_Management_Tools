@@ -1,6 +1,7 @@
 #include "cpu_info_from_log.h"
 #include "mem_info_from_log.h"
 #include "sys_info.h"
+#include "disk_info.h"
 #include "resources_display.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,9 +21,11 @@ void display_main(void){
     struct winsize wbuf;
     float now_row = 0, now_col = 0;
     int duration = 10, refresh_cycle = 1;
+    short path_max_len = 0;
     CPU_Result cpu_info, avg_cpu_info;
     MEM_Info mem_info;
-    UNIT unit = KB;
+    UNIT MEM_unit = GB, SWAP_unit = MB, DISK_unit = GB;
+    DISK_Result* head = NULL, *next = NULL;
     char buf[LEN] = { '\0' }, funcBuf[FUNC_BUF_LEN] = { '\0' };
     (ioctl(0, TIOCGWINSZ, &wbuf) == -1) ? printf("%s", exception(-4, "main", "Windows Size")) : 0;
     initscr();
@@ -97,7 +100,7 @@ void display_main(void){
         sprintf(buf, "] %5.1lf%%", ((mem_info.size.mem_total - mem_info.size.mem_free) / (double)mem_info.size.mem_total) * 100);
         addstr(buf);
         move(now_row + 9, wbuf.ws_col * (BAR_RATIO + 0.2));
-        sprintf(buf, "(%.2lf%s / %.2lf%s)", convert_Size_Unit(mem_info.size.mem_total - mem_info.size.mem_free, unit), unitMap[(int)unit].str, convert_Size_Unit(mem_info.size.mem_total, unit), unitMap[(int)unit].str);
+        sprintf(buf, "(%.2lf%s / %.2lf%s)", convert_Size_Unit(mem_info.size.mem_total - mem_info.size.mem_free, MEM_unit), unitMap[(int)MEM_unit].str, convert_Size_Unit(mem_info.size.mem_total, MEM_unit), unitMap[(int)MEM_unit].str);
         addstr(buf);
 
         // Print Swap Memroy Usage
@@ -107,14 +110,31 @@ void display_main(void){
         sprintf(buf, "] %5.1lf%%", ((mem_info.size.swap_total - mem_info.size.swap_free) / (double)mem_info.size.swap_total) * 100);
         addstr(buf);
         move(now_row + 10, wbuf.ws_col * (BAR_RATIO + 0.2));
-        sprintf(buf, "(%.2lf%s / %.2lf%s)", convert_Size_Unit(mem_info.size.swap_total - mem_info.size.swap_free, unit), unitMap[(int)unit].str, convert_Size_Unit(mem_info.size.swap_total, unit), unitMap[(int)unit].str);
+        sprintf(buf, "(%.2lf%s / %.2lf%s)", convert_Size_Unit(mem_info.size.swap_total - mem_info.size.swap_free, SWAP_unit), unitMap[(int)SWAP_unit].str, convert_Size_Unit(mem_info.size.swap_total, SWAP_unit), unitMap[(int)SWAP_unit].str);
         addstr(buf);
         
         // Print Disk Usage
         move (now_row + 12, now_col);
         addstr("Disk Usage");
-
-
+        head = get_Partition_Info_List();
+        path_max_len = get_Partition_Max_Length(head);
+        for (int i = 13; head != NULL; i++){
+            move (now_row + i, now_col);
+            sprintf(buf, "%s: ", head->mount_path);
+            addstr(buf);
+            move (now_row + i, now_col + path_max_len + 1);
+            addstr(" [");
+            for (int i = path_max_len * 0.5; i < wbuf.ws_col * BAR_RATIO; (i++ < (wbuf.ws_col*BAR_RATIO*((head->size.total_space - head->size.free_size) / (double)head->size.total_space))) ? addstr("#") : addstr(" "));
+            sprintf(buf, "] %5.1lf%%", ((head->size.total_space - head->size.free_size) / (double)head->size.total_space) * 100);
+            addstr(buf);
+            move(now_row  + i, wbuf.ws_col * (BAR_RATIO + 0.2));
+            sprintf(buf, "(%.2lf%s / %.2lf%s)", convert_Size_Unit(head->size.total_space - head->size.free_size, DISK_unit), unitMap[(int)DISK_unit].str, convert_Size_Unit(head->size.total_space, DISK_unit), unitMap[(int)DISK_unit].str);
+            addstr(buf);
+            next = head->next;
+            free(head);
+            head = next;
+        }
+        
         move(now_row, now_col);
         refresh();
         sleep(refresh_cycle);

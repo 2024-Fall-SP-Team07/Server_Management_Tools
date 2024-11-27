@@ -6,6 +6,5 @@
 #define MEM_INFO_FROM_LOG_H
 
 MEM_Info get_Mem_Information(int);
-double convert_Size_Unit(long long, UNIT);
 
 #endif

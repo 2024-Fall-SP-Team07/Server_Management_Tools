@@ -28,3 +28,11 @@ char* exception(int code, char *func_name, char *detail){
     (code == -4) ? sprintf(error_msg, "(func. - %s) Cannot Load data: %s", func_name, detail) : 0;
     return error_msg;
 }
+
+double convert_Size_Unit(long long size, UNIT unit){
+    double res = (double)size;
+    for (int i = 0; i < (int)unit; i++){
+        res /= 1024;
+    }
+    return res;
+}
