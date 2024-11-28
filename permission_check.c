@@ -1,44 +1,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #include <errno.h>
 
+#define MAX_PATH 512
 #define LOG_FILE "permissions_log.txt"
-#define MAX_PATH 1024
-#define MAX_COMMAND 1024
 
 void run_command(const char *command) {
-    char silent_command[MAX_COMMAND];
-    snprintf(silent_command, MAX_COMMAND, "%s > /dev/null 2>&1", command);
-    if (system(silent_command) != 0) {
-        fprintf(stderr, "Error executing: %s\n", command);
-    }
-}
-
-void expand_path(const char *path, char *expanded) {
-    const char *home = getenv("HOME");
-    const char *user = getenv("USER");
-    if (!home || !user) {
-        fprintf(stderr, "Environment variables USER or HOME are not set.\n");
-        exit(EXIT_FAILURE);
-    }
-
-    strncpy(expanded, path, MAX_PATH);
-
-    char *username_pos = strstr(expanded, "${USERNAME}");
-    if (username_pos) {
-        char buffer[MAX_PATH];
-        snprintf(buffer, sizeof(buffer), "%.*s%s%s", (int)(username_pos - expanded), expanded, user, username_pos + 11);
-        strncpy(expanded, buffer, MAX_PATH);
-    }
-
-    char *home_pos = strstr(expanded, "$HOME");
-    if (home_pos) {
-        char buffer[MAX_PATH];
-        snprintf(buffer, sizeof(buffer), "%.*s%s%s", (int)(home_pos - expanded), expanded, home, home_pos + 5);
-        strncpy(expanded, buffer, MAX_PATH);
+    int ret = system(command);
+    if (ret != 0) {
+        fprintf(stderr, "Error executing command: %s\n", command);
     }
 }
 
@@ -46,7 +19,7 @@ void expand_path(const char *path, char *expanded) {
 void process_file(const char *filename) {
     FILE *file = fopen(filename, "r");
     if (!file) {
-        perror("Failed to open input file");
+        perror("Failed to open file");
         exit(EXIT_FAILURE);
     }
 
@@ -61,54 +34,56 @@ void process_file(const char *filename) {
     int total_files = 0, improper_files = 0;
 
     while (fgets(line, sizeof(line), file)) {
-        char path[MAX_PATH], expanded_path[MAX_PATH];
-        char owner[64], group[64], permissions[16];
+        char path[MAX_PATH], owner[64], group[64], permissions[16];
         int immutable = 0;
 
         char *token = strtok(line, "|");
         if (!token) continue;
         strncpy(path, token, sizeof(path));
+        path[strcspn(path, "\n")] = '\0';
 
         token = strtok(NULL, "&");
         if (!token) continue;
+
         sscanf(token, "%[^.].%[^,], %s", owner, group, permissions);
 
         if (strstr(line, "chattr +i")) {
             immutable = 1;
         }
 
-        expand_path(path, expanded_path);
-
-        if (access(expanded_path, F_OK) != 0) {
-            fprintf(log_file, "Warning: File not found: %s\n", expanded_path);
+        struct stat file_stat;
+        if (stat(path, &file_stat) == -1) {
+            fprintf(stderr, "Warning: File not found or inaccessible: %s\n", path);
             continue;
         }
 
         total_files++;
         int file_changed = 0;
 
+        char command[MAX_PATH];
+        snprintf(command, sizeof(command), "chown %s:%s %s", owner, group, path);
+        if (system(command) == 0) {
+            file_changed = 1;
+        }
 
-        char command[MAX_COMMAND];
-        snprintf(command, sizeof(command), "chown %s:%s %s", owner, group, expanded_path);
-        run_command(command);
-        file_changed = 1;
-
-        snprintf(command, sizeof(command), "chmod %s %s", permissions, expanded_path);
-        run_command(command);
-        file_changed = 1;
+        snprintf(command, sizeof(command), "chmod %s %s", permissions, path);
+        if (system(command) == 0) {
+            file_changed = 1;
+        }
 
         if (immutable) {
-            snprintf(command, sizeof(command), "chattr +i %s", expanded_path);
+            snprintf(command, sizeof(command), "chattr +i %s", path);
         } else {
-            snprintf(command, sizeof(command), "chattr -i %s", expanded_path);
+            snprintf(command, sizeof(command), "chattr -i %s", path);
         }
-        run_command(command);
-        file_changed = 1;
+        if (system(command) == 0) {
+            file_changed = 1;
+        }
 
-        // 로그 작성
+        // 로그 기록
         if (file_changed) {
             fprintf(log_file, "Modified: %s | Owner: %s:%s, Permissions: %s, Immutable: %s\n",
-                    expanded_path, owner, group, permissions, immutable ? "Yes" : "No");
+                    path, owner, group, permissions, immutable ? "Yes" : "No");
             improper_files++;
         }
     }
