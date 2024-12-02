@@ -5,8 +5,8 @@
 #define DISK_PATH_LEN 4096
 
 typedef struct DISK_SPACE {
-    unsigned long long total_space;
-    unsigned long long free_size;
+    unsigned long total_space;
+    unsigned long free_size;
 } DISK_SPACE;
 
 typedef struct DISK_Result {

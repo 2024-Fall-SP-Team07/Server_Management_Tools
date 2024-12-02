@@ -1,47 +1,29 @@
 #include "common.h"
 #include "sys_info.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-#include <ifaddrs.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
 #include <time.h>
 #include <sys/sysinfo.h>
 
-void get_Hostname(char* buf){
+void get_Hostname(char* buf, int size){
     FILE* fp = NULL;
-    char hostname[HOSTNAME_LEN] = { '\0' };
     if ((fp = fopen("/etc/hostname", "r")) == NULL) {
         strcpy(buf, exception(0, NULL, "hostname"));
     }
-    fscanf(fp, "%s", hostname);
+    fgets(buf, size, fp);
+    buf[strlen(buf) - 1] = '\0';
     fclose(fp);
-    strcpy(buf,hostname);
 }
 
-void get_IPv4(char* buf){
-    struct ifaddrs *ifaddr, *ifa;
-    char ip[100];
-
-    if (getifaddrs(&ifaddr) == -1) {
-        strcpy(buf, exception(0, NULL, "interface"));
+void get_ProductName(char* buf, int size){
+    FILE *fp = NULL;
+    if ((fp = fopen("/sys/class/dmi/id/product_name", "r")) == NULL){
+        strcpy(buf, exception(0, NULL, "product_name"));
     }
-
-    for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next){
-        if (ifa->ifa_addr == NULL){
-            continue;
-        }
-
-        if (ifa->ifa_addr->sa_family == AF_INET) { // IPv4 인 경우 출력
-            if (strncmp(ifa->ifa_name, "eno", 3) == 0 || strncmp(ifa->ifa_name, "Bond", 4) == 0 || strncmp(ifa->ifa_name, "eth", 3) == 0){
-                struct sockaddr_in *addr = (struct sockaddr_in *) ifa -> ifa_addr;
-                inet_ntop(AF_INET, &addr->sin_addr, ip, sizeof(ip));
-                sprintf(buf, "%s (%s)", ip, ifa->ifa_name);
-                return;
-            }
-        }
-    }
-    strcpy(buf,exception(0, NULL, "IPv4"));
+    fgets(buf, size, fp);
+    buf[strlen(buf) - 1] = '\0';
+    fclose(fp);
 }
 
 void get_SystemTime(char* buf){

@@ -11,7 +11,6 @@ DISK_Result* get_Partition_Info_List(){
     DISK_Result *res, *head = NULL, *cur = NULL;
     char fileSystem[DISK_NAME_LEN] = { '\0' }, path_buf[DISK_PATH_LEN] = { '\0' };
     if ((fp = fopen("/proc/mounts", "r")) == NULL) {
-        // strcpy(buf, exception(-2, NULL, "mounts"));
         return NULL;
     }
     while (fscanf(fp, "%s %s %*s %*s %*s %*s", fileSystem, path_buf) != EOF) {
@@ -25,7 +24,7 @@ DISK_Result* get_Partition_Info_List(){
         strcpy(res->mount_path, path_buf);
         res->size = get_Partition_Size(path_buf);
 
-        if (((int)(res->size.free_size) == -1) || (int)((res->size.total_space) == -1)) {
+        if (((int)(res->size.free_size) ==  0) || (int)((res->size.total_space) == 0)) {
             return NULL;
         }
 
@@ -45,8 +44,8 @@ DISK_SPACE get_Partition_Size(char* path){
     DISK_SPACE res;
     struct statvfs buf;
     if (statvfs(path, &buf) == -1){
-        res.total_space = -1;
-        res.free_size = -1;
+        res.total_space = 0;
+        res.free_size = 0;
     } else {
         res.total_space = (unsigned long long) (buf.f_blocks * buf.f_frsize) / 1024; // Unit: KB
         res.free_size = (unsigned long long) (buf.f_bfree * buf.f_frsize) / 1024; // Unit: KB
@@ -56,9 +55,11 @@ DISK_SPACE get_Partition_Size(char* path){
 
 short get_Partition_Max_Length(DISK_Result* head){
     DISK_Result* temp = head;
-    short max = 0;
+    short max = 0, fileSystem = 0, path = 0;
     for (; temp != NULL; temp = temp->next){
-        max = (((short)strlen(temp->mount_path) > max) ? (short)strlen(temp->mount_path) : max);
+        path = (short)strlen(temp->mount_path);
+        fileSystem = (short)strlen(temp->fileSystem);
+        max = (((path + fileSystem) > max) ? (path + fileSystem) : max);
     }
     return max;
 }

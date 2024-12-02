@@ -6,10 +6,10 @@
 #define MEM_INFO_LOG "/var/log/00_Resources_Status/MEM_Info"
 
 typedef struct MEM_Size{
-    long long mem_total;
-    long long mem_free;
-    long long swap_total;
-    long long swap_free;
+    unsigned long mem_total;
+    unsigned long mem_free;
+    unsigned long swap_total;
+    unsigned long swap_free;
 } MEM_Size;
 
 typedef struct MEM_Info{

@@ -4,7 +4,7 @@
 #define ERROR_MSG_LEN 128
 #define LOG_PATH "/var/log/00_Resources_Status"
 
-typedef enum UNIT { KB, MB, GB, TB } UNIT;
+typedef enum UNIT { KB, MB, GB, TB, PB, EB } UNIT;
 
 typedef struct DateInfo {
     int year;

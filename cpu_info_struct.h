@@ -12,8 +12,8 @@ typedef struct CPU_Result {
 } CPU_Result;
 
 typedef struct CPU_Usage {
-    long long totalJiff;
-    long long idleJiff;
+    unsigned long totalJiff;
+    unsigned long idleJiff;
 } CPU_Usage;
 
 typedef struct CPU_Info {
