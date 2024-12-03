@@ -31,6 +31,10 @@ void display_main(void){ // Print Server Hostname, IPv4 Address
 
     (ioctl(0, TIOCGWINSZ, &wbuf) == -1) ? printf("%s", exception(-4, "main", "Windows Size")) : 0;
     initscr();
+    start_color();
+    use_default_colors();
+    init_pair(1, COLOR_BLACK, COLOR_WHITE);
+    init_pair(2, COLOR_MAGENTA, -1);
     curs_set(0);
     move(line++, (now_col = wbuf.ws_col * 0.01));
     // Print title
@@ -45,12 +49,17 @@ void display_main(void){ // Print Server Hostname, IPv4 Address
         display_MEM_Info(&wbuf, &line, now_row, now_col, MEM_unit, SWAP_unit);
         net_info = display_NET_Info(&wbuf, net_info, &line, now_row, now_col);  
 
+        attron(COLOR_PAIR(1));
+        move(wbuf.ws_row - 2, 0);
+        hline(' ' , wbuf.ws_col);
         move(wbuf.ws_row - 2, now_col);
         sprintf(buf, "To see partition information, Press \"d\"");
         addstr(buf);
+        move(wbuf.ws_row - 1, 0);
+        hline(' ' , wbuf.ws_col);
         move(wbuf.ws_row - 1, now_col);
         addstr("To change Viewer Settings, Press \"s\"");
-
+        attroff(COLOR_PAIR(1));
         move(now_row, now_col);
         refresh();
         sleep(refresh_cycle);
@@ -85,39 +94,63 @@ void display_CPU_Info(struct winsize* wbuf, short* line, int duration, int now_r
     char buf[LEN] = { '\0' };
 
     // Print CPU Temperatrue
+    attron(COLOR_PAIR(1));
+    move(now_row + (*line), 0);
+    hline(' ' , wbuf->ws_col);
     move(now_row + (*line)++, now_col);
     addstr("Temperature");
+    attroff(COLOR_PAIR(1));
     move(now_row + (*line)++, now_col);
+    hline(' ', wbuf->ws_col);
     addstr("CPU:      [");
     for (int i = 0; i < wbuf->ws_col * BAR_RATIO; (i++ < (wbuf->ws_col*BAR_RATIO*(cpu_info.temp / 90))) ? addstr("#") : addstr(" "));
-    sprintf(buf, "] %.1f Celsius", cpu_info.temp);
+    addstr("]");
+    (cpu_info.temp >= 70) ? attron(COLOR_PAIR(2) | A_BOLD) : 0;
+    sprintf(buf, " %.1f Celsius", cpu_info.temp);
     addstr(buf);
+    (cpu_info.temp >= 70) ? attroff(COLOR_PAIR(2) | A_BOLD) : 0;
     move(now_row + (*line), now_col);
+    hline(' ', wbuf->ws_col);
     addstr("CPU(AVG): [");
     for (int i = 0; i < wbuf->ws_col * BAR_RATIO; (i++ < (wbuf->ws_col*BAR_RATIO*(avg_cpu_info.temp / 90))) ? addstr("#") : addstr(" "));
-    sprintf(buf, "] %.1f Celsius", avg_cpu_info.temp);
+    addstr("]");
+    (avg_cpu_info.temp >= 70) ? attron(COLOR_PAIR(2) | A_BOLD) : 0;
+    sprintf(buf, " %.1f Celsius ", avg_cpu_info.temp);
     addstr(buf);
+    (avg_cpu_info.temp >= 70) ? attroff(COLOR_PAIR(2) | A_BOLD) : 0;
     move(now_row + (*line)++, wbuf->ws_col * (BAR_RATIO + 0.25));
     sprintf(buf, "(Duration: %d sec.)", duration);
     addstr(buf);
     (*line)++;
 
     // Print CPU Usage (instantaneous; %)
+    attron(COLOR_PAIR(1));
+    move(now_row + (*line), 0);
+    hline(' ', wbuf->ws_col);
     move(now_row + (*line)++, now_col);
     addstr("CPU / Memory Usage");
+    attroff(COLOR_PAIR(1));
     move(now_row + (*line)++, now_col);
+    hline(' ', wbuf->ws_col);
     addstr("CPU:      [");
     for (int i = 0; i < wbuf->ws_col * BAR_RATIO; (i++ < (wbuf->ws_col*BAR_RATIO*(cpu_info.usage / 100))) ? addstr("#") : addstr(" "));
-    sprintf(buf, "] %5.1f%%", cpu_info.usage);
+    addstr("]");
+    (cpu_info.usage >= 85) ? attron(COLOR_PAIR(2) | A_BOLD) : 0;
+    sprintf(buf, " %5.1f%%", cpu_info.usage);
     addstr(buf);
+    (cpu_info.usage >= 85) ? attroff(COLOR_PAIR(2) | A_BOLD) : 0;
 
     // Print CPU Usage (Average during entered duration; %)
     move(now_row + (*line), now_col);
+    hline(' ', wbuf->ws_col);
     sprintf(buf, "CPU(AVG): [");
     addstr(buf);
     for (int i = 0; i < wbuf->ws_col * BAR_RATIO; (i++ < (wbuf->ws_col*BAR_RATIO*(avg_cpu_info.usage / 100))) ? addstr("#") : addstr(" "));
-    sprintf(buf, "] %5.1f%%", avg_cpu_info.usage);
+    addstr("]");
+    (avg_cpu_info.usage >= 85) ? attron(COLOR_PAIR(2) | A_BOLD) : 0;
+    sprintf(buf, " %5.1f%%", avg_cpu_info.usage);
     addstr(buf);
+    (avg_cpu_info.usage >= 85) ? attroff(COLOR_PAIR(2) | A_BOLD) : 0;
     move(now_row + (*line)++, wbuf->ws_col * (BAR_RATIO + 0.2));
     sprintf(buf, "(Duration: %d sec.)", duration);
     addstr(buf);
@@ -128,23 +161,40 @@ void display_MEM_Info(struct winsize* wbuf, short* line, int now_row, int now_co
     char buf[LEN] = { '\0' };
     // Print Physical Memeory Usage
     move(now_row + (*line), now_col);
+    hline(' ', wbuf->ws_col);
     addstr("MEM:      [");
-    
     for (int i = 0; i < wbuf->ws_col * BAR_RATIO; (i++ < (wbuf->ws_col*BAR_RATIO*((mem_info.size.mem_total - mem_info.size.mem_free) / (double)mem_info.size.mem_total))) ? addstr("#") : addstr(" "));
-    sprintf(buf, "] %5.1lf%%", ((mem_info.size.mem_total - mem_info.size.mem_free) / (double)mem_info.size.mem_total) * 100);
+    addstr(")");
+    ((((mem_info.size.mem_total - mem_info.size.mem_free) / (double)mem_info.size.mem_total) * 100) >= 85) ? attron(COLOR_PAIR(2) | A_BOLD) : 0;
+    sprintf(buf, " %5.1lf%%", ((mem_info.size.mem_total - mem_info.size.mem_free) / (double)mem_info.size.mem_total) * 100);
     addstr(buf);
+    ((((mem_info.size.mem_total - mem_info.size.mem_free) / (double)mem_info.size.mem_total) * 100) >= 85) ? attroff(COLOR_PAIR(2) | A_BOLD) : 0;
     move(now_row + (*line)++, wbuf->ws_col * (BAR_RATIO + 0.2));
-    sprintf(buf, "(%.2lf%s / %.2lf%s)", convert_Size_Unit(mem_info.size.mem_total - mem_info.size.mem_free, MEM_unit), unitMap[(int)MEM_unit].str, convert_Size_Unit(mem_info.size.mem_total, MEM_unit), unitMap[(int)MEM_unit].str);
+    addstr("(");
+    ((((mem_info.size.mem_total - mem_info.size.mem_free) / (double)mem_info.size.mem_total) * 100) >= 85) ? attron(COLOR_PAIR(2) | A_BOLD) : 0;
+    sprintf(buf, "%.2lf%s", convert_Size_Unit(mem_info.size.mem_total - mem_info.size.mem_free, MEM_unit), unitMap[(int)MEM_unit].str);
+    addstr(buf);
+    ((((mem_info.size.mem_total - mem_info.size.mem_free) / (double)mem_info.size.mem_total) * 100) >= 85) ? attroff(COLOR_PAIR(2) | A_BOLD) : 0;
+    sprintf(buf, " / %.2lf%s)", convert_Size_Unit(mem_info.size.mem_total, MEM_unit), unitMap[(int)MEM_unit].str);
     addstr(buf);
 
     // Print Swap Memroy Usage
     move(now_row + (*line), now_col);
+    hline(' ', wbuf->ws_col);
     addstr("SWAP:     [");
     for (int i = 0; i < wbuf->ws_col * BAR_RATIO; (i++ < (wbuf->ws_col*BAR_RATIO*((mem_info.size.swap_total - mem_info.size.swap_free) / (double)mem_info.size.swap_total))) ? addstr("#") : addstr(" "));
-    sprintf(buf, "] %5.1lf%%", ((mem_info.size.swap_total - mem_info.size.swap_free) / (double)mem_info.size.swap_total) * 100);
+    addstr("]");
+    ((((mem_info.size.swap_total - mem_info.size.swap_free) / (double)mem_info.size.swap_total) * 100) > 0) ? attron(COLOR_PAIR(2) | A_BOLD) : 0;
+    sprintf(buf, " %5.1lf%%", ((mem_info.size.swap_total - mem_info.size.swap_free) / (double)mem_info.size.swap_total) * 100);
     addstr(buf);
+    ((((mem_info.size.swap_total - mem_info.size.swap_free) / (double)mem_info.size.swap_total) * 100) > 0) ? attroff(COLOR_PAIR(2) | A_BOLD) : 0;
     move(now_row + (*line)++, wbuf->ws_col * (BAR_RATIO + 0.2));
-    sprintf(buf, "(%.2lf%s / %.2lf%s)", convert_Size_Unit(mem_info.size.swap_total - mem_info.size.swap_free, SWAP_unit), unitMap[(int)SWAP_unit].str, convert_Size_Unit(mem_info.size.swap_total, SWAP_unit), unitMap[(int)SWAP_unit].str);
+    addstr("(");
+    ((((mem_info.size.swap_total - mem_info.size.swap_free) / (double)mem_info.size.swap_total) * 100) > 0) ? attron(COLOR_PAIR(2) | A_BOLD) : 0;
+    sprintf(buf, "%.2lf%s", convert_Size_Unit(mem_info.size.swap_total - mem_info.size.swap_free, SWAP_unit), unitMap[(int)SWAP_unit].str);
+    addstr(buf);
+    ((((mem_info.size.swap_total - mem_info.size.swap_free) / (double)mem_info.size.swap_total) * 100) > 0) ? attroff(COLOR_PAIR(2) | A_BOLD) : 0;
+    sprintf(buf, " / %.2lf%s)", convert_Size_Unit(mem_info.size.swap_total, SWAP_unit), unitMap[(int)SWAP_unit].str);
     addstr(buf);
     (*line)++;       
 }
@@ -156,21 +206,28 @@ NET_Result* display_NET_Info(struct winsize* wbuf, NET_Result *net_info, short* 
     short max_net_ifa_name_len = 0, ifa_count = 0;
     char buf[LEN] = { '\0' };
     int col, row;
-    move(now_row + (*line)++, now_col);
     net_info = get_IPv4(net_info, &max_net_ifa_name_len, &ifa_count);
     max_net_ifa_name_len += 2;
+    move(now_row + (*line), 0);
+    attron(COLOR_PAIR(1));
+    hline(' ', wbuf->ws_col);
+    move(now_row + (*line)++, now_col);
     sprintf(buf, "Networks  (# of Using Interface: %d)", ifa_count);
     addstr(buf);
+    move(now_row + (*line), 0);
+    hline(' ', wbuf->ws_col);
     move(now_row + (*line), now_col);
     addstr("Interface");
     move(now_row + (*line)++, now_col + max_net_ifa_name_len);
     sprintf(buf, "%16s  %9s  %9s %12s %12s %11s %11s", "IPv4 Address", "Upload", "Download", "Error(RX)", "Error(TX)", "Dropped(RX)", "Dropped(TX)");
     addstr(buf);
+    attroff(COLOR_PAIR(1));
 
     get_Net_Byte(net_info);
     cur_pos = net_info;
     for (int i = 0; cur_pos != NULL ; cur_pos = cur_pos -> next){
         getyx(stdscr, row, col);
+        (void)col;
         if (row == wbuf->ws_row - 6){
             move(now_row + (*line) + i + 1, now_col);
             sprintf(buf, "...(%d rows omitted) - To see the remaining, Increase the terminal size.", ifa_count - (i++));
@@ -180,6 +237,7 @@ NET_Result* display_NET_Info(struct winsize* wbuf, NET_Result *net_info, short* 
         }
         NET_UP_Unit = KB, NET_Down_Unit = KB;
         move(now_row + (*line) + i, now_col);
+        hline(' ', wbuf->ws_col);
         sprintf(buf, "%s", cur_pos->ifa_name);
         addstr(buf);
 
