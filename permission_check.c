@@ -1,3 +1,4 @@
+#include <ncurses.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -33,6 +34,15 @@ void process_file(const char *filename) {
     char line[512];
     int total_files = 0, improper_files = 0;
 
+    initscr();
+    noecho();
+    cbreak();
+    int max_y, max_x;
+    getmaxyx(stdscr, max_y, max_x);
+
+    mvprintw(0, 0, "Processing files...");
+    refresh();
+
     while (fgets(line, sizeof(line), file)) {
         char path[MAX_PATH], owner[64], group[64], permissions[16];
         int immutable = 0;
@@ -53,7 +63,9 @@ void process_file(const char *filename) {
 
         struct stat file_stat;
         if (stat(path, &file_stat) == -1) {
-            fprintf(stderr, "Warning: File not found or inaccessible: %s\n", path);
+            mvprintw(total_files + 2, 0, "Warning: File not found or inaccessible: %s", path);
+            refresh();
+            total_files++;
             continue;
         }
 
@@ -80,20 +92,27 @@ void process_file(const char *filename) {
             file_changed = 1;
         }
 
-        // 로그 기록
         if (file_changed) {
             fprintf(log_file, "Modified: %s | Owner: %s:%s, Permissions: %s, Immutable: %s\n",
                     path, owner, group, permissions, immutable ? "Yes" : "No");
             improper_files++;
         }
+
+        mvprintw(1, 0, "Total files checked: %d", total_files);
+        mvprintw(2, 0, "Improper files fixed: %d", improper_files);
+        refresh();
     }
 
     fclose(file);
     fclose(log_file);
 
-    printf("Total files checked: %d\n", total_files);
-    printf("Improper files fixed: %d\n", improper_files);
-    printf("Log file saved at: %s\n", LOG_FILE);
+    mvprintw(4, 0, "Processing complete!");
+    mvprintw(5, 0, "Log file saved at: %s", LOG_FILE);
+    mvprintw(6, 0, "Press any key to exit...");
+    refresh();
+
+    getch();
+    endwin();
 }
 
 int main() {
