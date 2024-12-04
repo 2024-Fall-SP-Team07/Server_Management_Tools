@@ -17,7 +17,7 @@ MEM_Info get_Mem_Information(int boundary){
     }
     close(fd);
     res.size.mem_free = sum_physical_usage / idx;
-    res.size.swap_free = sum_swap_usage / idx;
+    res.size.swap_free = (idx != 0) ? sum_swap_usage / idx : 0;
     res.size.mem_total = buf.size.mem_total;
     res.size.swap_total = buf.size.swap_total;
     return res;
