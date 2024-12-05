@@ -15,6 +15,8 @@
 #define MEM_USAGE_CRITICAL_PERCENT 85
 #define SWAP_USAGE_CRITICAL_PERCENT 0
 #define DISK_USAGE_CRITICAL_PERCENT 85
+#define CPU_MEM_LINE 17
+#define PARTITION_LINE 7
 
 void signal_handling(int);
 void initialization(void);
