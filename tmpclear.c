@@ -291,11 +291,8 @@ int ask_delete_confirmation(int* line) {
     return ask_delete_confirmation(line); // 잘못된 입력 시 다시 묻기
 }
 
-int main() {
-    initscr();
-    cbreak();
-    curs_set(0);
-
+int tmpclean() {
+    int ch;
     int l = 0;
     int delete_files = ask_delete_confirmation(&l);
     int deleted_files_count = 0; // 삭제된 파일 개수 추적
@@ -327,20 +324,124 @@ int main() {
 
         clear();
         snprintf(message, sizeof(message), "Deleted %d tmp files.", deleted_files_count);
-        mvprintw(LINES / 2, (COLS - strlen(message)) / 2, "%s", message);
+        mvprintw(LINES / 2 - 1, (COLS - strlen(message)) / 2, "%s", message);
         snprintf(message, sizeof(message), "details at /var/log/deleted_tmp_files.log");
+        mvprintw(LINES / 2, (COLS - strlen(message)) / 2, "%s", message);
+        snprintf(message, sizeof(message), "To restore main screen, Press \"q\"");
         mvprintw(LINES / 2 + 1, (COLS - strlen(message)) / 2, "%s", message);
         refresh();
     }
     else
     {
         clear();
-        snprintf(message, sizeof(message), "Press any key to exit");
+        snprintf(message, sizeof(message), "To restore main screen, Press \"q\"");
         mvprintw(LINES / 2, (COLS - strlen(message)) / 2, "%s", message);
         refresh();
     }
 
-    getch();
-    endwin();
+    while ((ch = getch()) != 'q') 
+    {
+        getch();
+    }
+
+    return 0;
+}
+
+#define MAX_MENU_ITEMS 5
+
+// 메뉴 항목에 대한 정보를 담고 있는 구조체
+typedef struct {
+    const char *label;   // 메뉴 항목 텍스트
+    void (*action)();    // 해당 메뉴를 선택했을 때 실행될 함수
+} MenuItem;
+
+// 각 메뉴 항목에 대한 동작 정의
+void menu_action_1() {
+    tmpclean();
+    getch(); // 동작 후 키 입력 대기
+}
+
+void menu_action_2() {
+    clear();
+    printw("You selected Option 2.\n");
+    refresh();
+    getch(); // 동작 후 키 입력 대기
+}
+
+void menu_action_3() {
+    clear();
+    printw("You selected Option 3.\n");
+    refresh();
+    getch(); // 동작 후 키 입력 대기
+}
+
+void menu_action_4() {
+    clear();
+    printw("You selected Option 4.\n");
+    refresh();
+    getch(); // 동작 후 키 입력 대기
+}
+
+// 메뉴 항목 "Quit" 선택 시 프로그램 종료 처리 함수
+void menu_action_exit() {
+    clear();
+    printw("Exiting menu...\n");
+    refresh(); // 동작 후 키 입력 대기
+    endwin(); // ncurses 종료
+    exit(0); // 프로그램 종료
+}
+
+// 메뉴 UI를 출력하는 함수
+void display_menu(MenuItem menu[], int current) {
+    clear(); // 화면을 지운다
+
+    for (int i = 0; i < MAX_MENU_ITEMS; i++) {
+        if (i == current) {
+            attron(A_REVERSE); // 현재 선택된 항목은 반전 효과
+        }
+        mvprintw(i, 0, "%s", menu[i].label);
+        if (i == current) {
+            attroff(A_REVERSE); // 반전 효과 종료
+        }
+    }
+    refresh();
+}
+
+int main() {
+    initscr();              // ncurses 초기화
+    cbreak();               // 입력을 한 문자씩 받음
+    noecho();               // 입력 문자 화면에 표시 안 함
+    keypad(stdscr, TRUE);   // 방향키 사용 가능
+    curs_set(0);            // 커서 숨김
+
+    MenuItem menu[MAX_MENU_ITEMS] = {
+        {"Option 1", menu_action_1},
+        {"Option 2", menu_action_2},
+        {"Option 3", menu_action_3},
+        {"Option 4", menu_action_4},
+        {"Quit", menu_action_exit}  // Quit 메뉴 항목 추가
+    };
+
+    int current = 0; // 현재 선택된 메뉴 항목 인덱스
+    int ch;
+
+    while (1) {
+        display_menu(menu, current); // 메뉴를 화면에 표시
+
+        ch = getch(); // 사용자 입력 받기
+        switch (ch) {
+            case KEY_UP:
+                current = (current > 0) ? current - 1 : MAX_MENU_ITEMS - 1;
+                break;
+            case KEY_DOWN:
+                current = (current < MAX_MENU_ITEMS - 1) ? current + 1 : 0;
+                break;
+            case 10: // Enter 키
+                menu[current].action(); // 선택된 메뉴 항목의 동작 실행
+                break;
+        }
+    }
+
+    endwin(); // ncurses 종료
     return 0;
 }
