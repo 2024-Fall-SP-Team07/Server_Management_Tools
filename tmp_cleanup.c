@@ -40,6 +40,7 @@ int tmp_cleanup() {
     cbreak();
     curs_set(0);
 
+    int ch;
     int l = 0;
     int delete_files = ask_delete_confirmation(&l);
     int deleted_files_count = 0; // 삭제된 파일 개수 추적
@@ -71,19 +72,24 @@ int tmp_cleanup() {
 
         clear();
         snprintf(message, sizeof(message), "Deleted %d tmp files.", deleted_files_count);
-        mvprintw(LINES / 2, (COLS - strlen(message)) / 2, "%s", message);
+        mvprintw(LINES / 2 - 1, (COLS - strlen(message)) / 2, "%s", message);
         snprintf(message, sizeof(message), "details at /var/log/deleted_tmp_files.log");
+        mvprintw(LINES / 2, (COLS - strlen(message)) / 2, "%s", message);
+        snprintf(message, sizeof(message), "To restore main screen, Press \"q\"");
         mvprintw(LINES / 2 + 1, (COLS - strlen(message)) / 2, "%s", message);
         refresh();
     }
     else
     {
         clear();
-        snprintf(message, sizeof(message), "Press any key to exit");
+        snprintf(message, sizeof(message), "To restore main screen, Press \"q\"");
         mvprintw(LINES / 2, (COLS - strlen(message)) / 2, "%s", message);
         refresh();
     }
 
-    getch();
+    while ((ch = getch()) != 'q') 
+    {
+        getch();
+    }
     endwin();
 }
