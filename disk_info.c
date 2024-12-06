@@ -4,8 +4,6 @@
 #include <string.h>
 #include <sys/statvfs.h>
 
-// Signal -> 디스크 용량 못 불러오면 signal 호출, 바로 null 반환
-
 DISK_Result* get_Partition_Info_List(short* partition_count){
     FILE *fp = NULL;
     DISK_Result *res, *head = NULL, *cur = NULL;

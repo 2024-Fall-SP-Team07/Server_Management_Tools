@@ -8,8 +8,8 @@
 #define TYPE_LEN 13
 #define LOG_MSG_LEN 28 // YYYY-DD-MM HH:MM:SS 100.00\n(<- Temperature, Celcius)
 
-CPU_Usage get_CPU_Jiffies();
-void write_CPU_Information();
-float get_CPU_Temperature();
+CPU_Usage get_CPU_Jiffies(DateInfo*);
+void *write_CPU_Information();
+float get_CPU_Temperature(DateInfo*);
 
 #endif

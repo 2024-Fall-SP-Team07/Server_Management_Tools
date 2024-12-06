@@ -1,8 +1,8 @@
 #ifndef COMMON_H
 
 #define COMMON_H
-#define ERROR_MSG_LEN 128
-#define LOG_PATH "/var/log/00_Resources_Status"
+#define ERROR_MSG_LEN 256
+#define LOG_PATH "/var/log/00_Server_Management"
 #define UNIT_COUNT 6
 
 typedef enum UNIT { KB, MB, GB, TB, PB, EB } UNIT;
@@ -24,7 +24,7 @@ typedef struct Unit_Mapping {
 extern const Unit_Mapping unitMap[];
 
 DateInfo get_Date();
-char* exception(int, char *, char *);
+char* exception(int, char *, char *, DateInfo* date);
 double convert_Size_Unit(long long, UNIT);
 
 #endif

@@ -3,7 +3,7 @@
 #include "common.h"
 
 #define MEM_INFO_STRUCT_H
-#define MEM_INFO_LOG "/var/log/00_Resources_Status/MEM_Info"
+#define MEM_INFO_LOG "/var/log/00_Server_Management/MEM_Info"
 
 typedef struct MEM_Size{
     unsigned long mem_total;

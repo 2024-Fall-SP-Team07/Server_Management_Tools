@@ -19,13 +19,13 @@ DateInfo get_Date(){
     return dateInfo;
 }
 
-char* exception(int code, char *func_name, char *detail){
+char* exception(int code, char *func_name, char *detail, DateInfo* date){
     static char error_msg[ERROR_MSG_LEN];
-    (code == 0) ? sprintf(error_msg, "N/A: %s", detail) : 0;
-    (code == -1) ? sprintf(error_msg, "(func. - %s) Cannot open file: %s", func_name, detail) : 0;
-    (code == -2) ? sprintf(error_msg, "(func. - %s) Cannot Read data: %s", func_name, detail) : 0;
-    (code == -3) ? sprintf(error_msg, "(func. - %s) Cannot Write data: %s", func_name, detail) : 0;
-    (code == -4) ? sprintf(error_msg, "(func. - %s) Cannot Load data: %s", func_name, detail) : 0;
+    (code == -1) ? sprintf(error_msg, "%04d-%02d-%02d %02d:%02d:%02d (func. - %s) Cannot open file: %s", date->year, date->month, date->day, date->hrs, date->min, date->sec, func_name, detail) : 0;
+    (code == -2) ? sprintf(error_msg, "%04d-%02d-%02d %02d:%02d:%02d (func. - %s) Cannot Read data: %s", date->year, date->month, date->day, date->hrs, date->min, date->sec, func_name, detail) : 0;
+    (code == -3) ? sprintf(error_msg, "%04d-%02d-%02d %02d:%02d:%02d (func. - %s) Cannot Write data: %s", date->year, date->month, date->day, date->hrs, date->min, date->sec, func_name, detail) : 0;
+    (code == -4) ? sprintf(error_msg, "%04d-%02d-%02d %02d:%02d:%02d (func. - %s) Cannot Load data: %s", date->year, date->month, date->day, date->hrs, date->min, date->sec, func_name, detail) : 0;
+    (code == -5) ? sprintf(error_msg, "%04d-%02d-%02d %02d:%02d:%02d (func. - %s) Cannot malloc", date->year, date->month, date->day, date->hrs, date->min, date->sec, func_name) : 0;
     return error_msg;
 }
 

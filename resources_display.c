@@ -27,22 +27,19 @@ const Unit_Mapping unitMap[] = {
 struct sigaction sa;
 UNIT MEM_unit = GB, SWAP_unit = MB, DISK_unit = GB;
 int refresh_cycle = 1, cpu_usage_avg_duration = 3600, cpu_temp_avg_duration = 3600;
-short jump_cnt = 0, return_exit = 0, blind = 0, display_cnt = 0, display_cnt_const = 0, list_count = 0;
+short jump_cnt = 0, return_exit = 0, blind = 0, display_cnt = 0, display_cnt_const = 0, list_count = 0, before_sec = -1, same_sec_cnt = 0;
 
 void signal_handling(int sig){
     (void)sig;
     struct winsize wbuf;
-    (ioctl(0, TIOCGWINSZ, &wbuf) == -1) ? printf("%s", exception(-4, "main", "Windows Size")) : 0;
+    DateInfo date = get_Date();
+    (ioctl(0, TIOCGWINSZ, &wbuf) == -1) ? fprintf(stderr, "%s\n", exception(-4, "main", "Windows Size", &date)) : 0;
     int input = getch();
     if (input != ERR){
         ('A' <= input && input <= 'Z') ? input += 32 : 0;
         switch(input){
             case 'd': 
-                jump_cnt = 0;
-                blind = 0;
-                display_cnt = 0;
-                display_cnt_const = 0;
-                list_count = 0;
+                restore_screen_init();
                 return_exit = 0;
                 display_Disk_Info();
                 break;
@@ -51,11 +48,7 @@ void signal_handling(int sig){
                 display_clear(&wbuf, 0);
                 break;
             case 'q': 
-                jump_cnt = 0;
-                blind = 0;
-                display_cnt = 0;
-                display_cnt_const = 0;
-                list_count = 0;
+                restore_screen_init();
                 return_exit = 1;
                 break;
             case 'n':
@@ -72,11 +65,20 @@ void signal_handling(int sig){
     }
 }
 
+void restore_screen_init(void){
+    jump_cnt = 0;
+    blind = 0;
+    display_cnt = 0;
+    display_cnt_const = 0;
+    list_count = 0;
+}
+
 void initialization(void){
     struct winsize wbuf;
+    DateInfo date = get_Date();
     int fd = fileno(stdin), now_row, now_col;
     char buf[LEN] = { '\0' };
-    (ioctl(0, TIOCGWINSZ, &wbuf) == -1) ? printf("%s", exception(-4, "main", "Windows Size")) : 0;
+    (ioctl(0, TIOCGWINSZ, &wbuf) == -1) ? fprintf(stderr, "%s\n", exception(-4, "main", "Windows Size", &date)) : 0;
     initscr();
     start_color();
     use_default_colors();
@@ -125,11 +127,13 @@ void initialization(void){
     sigemptyset(&sa.sa_mask);
 
     sigaction(SIGIO, &sa, NULL);
+    same_sec_cnt = 0;
 }
 
-void display_main(void){ // Print Server Hostname, IPv4 Address
+void display_main(void){ 
     struct winsize wbuf;
-    (ioctl(0, TIOCGWINSZ, &wbuf) == -1) ? printf("%s", exception(-4, "main", "Windows Size")) : 0;
+    DateInfo date = get_Date();
+    (ioctl(0, TIOCGWINSZ, &wbuf) == -1) ? fprintf(stderr, "%s\n", exception(-4, "main", "Windows Size", &date)) : 0;
     int now_row = 0, now_col = 0, fd, flags;
     short line = 1;
     char buf[LEN] = { '\0' };
@@ -156,6 +160,7 @@ void display_main(void){ // Print Server Hostname, IPv4 Address
         move(now_row, now_col);
         display_System_Info(now_row, now_col);
         move(now_row += 1, now_col);
+
         display_CPU_Info(&wbuf, &line, cpu_temp_avg_duration, cpu_usage_avg_duration, now_row, now_col);
         display_MEM_Info(&wbuf, &line, now_row, now_col, MEM_unit, SWAP_unit);
         net_info = display_NET_Info(&wbuf, net_info, &line, now_row, now_col);  
@@ -207,11 +212,29 @@ void display_System_Info(int now_row, int now_col){
     addstr(buf);
 }
 
+short check_running_collector(void* result, char* type){
+    DateInfo log_date;
+    log_date = (strcmp(type, "CPU") == 0) ? ((CPU_Result*) result)->date : ((MEM_Result*) result)->date;
+    if (log_date.sec != before_sec) {
+        same_sec_cnt = 0;
+        before_sec = log_date.sec;
+        return 1;
+    } else {
+        if (same_sec_cnt > 2) {
+            return 0;
+        } else {
+            same_sec_cnt++;
+        }
+    }
+    return 0;
+}
+
 void display_CPU_Info(struct winsize* wbuf, short* line, int temp_duration, int usage_duration, int now_row, int now_col){
     CPU_Result cpu_info = get_CPU_Information(1, 1);
     CPU_Result avg_cpu_info = get_CPU_Information(temp_duration, usage_duration);
+    int status = check_running_collector(&cpu_info, "CPU");
     char buf[LEN] = { '\0' };
-
+    
     // Print CPU Temperatrue
     attron(COLOR_PAIR(1));
     move(now_row + (*line), 0);
@@ -221,25 +244,33 @@ void display_CPU_Info(struct winsize* wbuf, short* line, int temp_duration, int 
     attroff(COLOR_PAIR(1));
     move(now_row + (*line)++, now_col);
     hline(' ', wbuf->ws_col);
-    addstr("CPU:      [");
-    for (int i = 0; i < wbuf->ws_col * BAR_RATIO; (i++ < (wbuf->ws_col*BAR_RATIO*(cpu_info.temp / 90))) ? addstr("#") : addstr(" "));
-    addstr("]");
-    (cpu_info.temp >= CPU_TEMP_CRITICAL_POINT) ? attron(COLOR_PAIR(2) | A_BOLD) : 0;
-    sprintf(buf, " %.1f Celsius", cpu_info.temp);
-    addstr(buf);
-    (cpu_info.temp >= CPU_TEMP_CRITICAL_POINT) ? attroff(COLOR_PAIR(2) | A_BOLD) : 0;
-    move(now_row + (*line), now_col);
-    hline(' ', wbuf->ws_col);
-    addstr("CPU(AVG): [");
-    for (int i = 0; i < wbuf->ws_col * BAR_RATIO; (i++ < (wbuf->ws_col*BAR_RATIO*(avg_cpu_info.temp / 90))) ? addstr("#") : addstr(" "));
-    addstr("]");
-    (avg_cpu_info.temp >= CPU_TEMP_CRITICAL_POINT) ? attron(COLOR_PAIR(2) | A_BOLD) : 0;
-    sprintf(buf, " %.1f Celsius ", avg_cpu_info.temp);
-    addstr(buf);
-    (avg_cpu_info.temp >= CPU_TEMP_CRITICAL_POINT) ? attroff(COLOR_PAIR(2) | A_BOLD) : 0;
-    move(now_row + (*line)++, wbuf->ws_col * (BAR_RATIO + 0.25));
-    sprintf(buf, "(Duration: %d sec.)", temp_duration);
-    addstr(buf);
+    if (status == 1){       
+        addstr("CPU:      [");
+        for (int i = 0; i < wbuf->ws_col * BAR_RATIO; (i++ < (wbuf->ws_col*BAR_RATIO*(cpu_info.temp / 90))) ? addstr("#") : addstr(" "));
+        addstr("]");
+        (cpu_info.temp >= CPU_TEMP_CRITICAL_POINT) ? attron(COLOR_PAIR(2) | A_BOLD) : 0; // Color change if temp >= CPU TEMP CRITICAL POINT
+        sprintf(buf, " %.1f Celsius", cpu_info.temp);
+        addstr(buf);
+        (cpu_info.temp >= CPU_TEMP_CRITICAL_POINT) ? attroff(COLOR_PAIR(2) | A_BOLD) : 0;
+        move(now_row + (*line), now_col);
+        hline(' ', wbuf->ws_col);
+        addstr("CPU(AVG): [");
+        for (int i = 0; i < wbuf->ws_col * BAR_RATIO; (i++ < (wbuf->ws_col*BAR_RATIO*(avg_cpu_info.temp / 90))) ? addstr("#") : addstr(" "));
+        addstr("]");
+        (avg_cpu_info.temp >= CPU_TEMP_CRITICAL_POINT) ? attron(COLOR_PAIR(2) | A_BOLD) : 0; // Color change if avg. temp >= CPU AVG TEMP CRITICAL POINT
+        sprintf(buf, " %.1f Celsius ", avg_cpu_info.temp);
+        addstr(buf);
+        (avg_cpu_info.temp >= CPU_TEMP_CRITICAL_POINT) ? attroff(COLOR_PAIR(2) | A_BOLD) : 0;
+        move(now_row + (*line)++, wbuf->ws_col * (BAR_RATIO + 0.25));
+        sprintf(buf, "(Duration: %d sec.)", temp_duration);
+        addstr(buf);
+    } else {
+        hline(' ', wbuf->ws_col);
+        addstr("    - Resources status collector program is not running.");
+        move(now_row + (*line)++, now_col);
+        hline(' ', wbuf->ws_col);
+        addstr("    - Please check whether the program is running.");
+    }
     (*line)++;
 
     // Print CPU Usage (instantaneous; %)
@@ -251,28 +282,35 @@ void display_CPU_Info(struct winsize* wbuf, short* line, int temp_duration, int 
     attroff(COLOR_PAIR(1));
     move(now_row + (*line)++, now_col);
     hline(' ', wbuf->ws_col);
-    addstr("CPU:      [");
-    for (int i = 0; i < wbuf->ws_col * BAR_RATIO; (i++ < (wbuf->ws_col*BAR_RATIO*(cpu_info.usage / 100))) ? addstr("#") : addstr(" "));
-    addstr("]");
-    (cpu_info.usage >= CPU_USAGE_CRITICAL_PERCENT) ? attron(COLOR_PAIR(2) | A_BOLD) : 0;
-    sprintf(buf, " %5.1f%%", cpu_info.usage);
-    addstr(buf);
-    (cpu_info.usage >= CPU_USAGE_CRITICAL_PERCENT) ? attroff(COLOR_PAIR(2) | A_BOLD) : 0;
-
-    // Print CPU Usage (Average during entered duration; %)
-    move(now_row + (*line), now_col);
-    hline(' ', wbuf->ws_col);
-    sprintf(buf, "CPU(AVG): [");
-    addstr(buf);
-    for (int i = 0; i < wbuf->ws_col * BAR_RATIO; (i++ < (wbuf->ws_col*BAR_RATIO*(avg_cpu_info.usage / 100))) ? addstr("#") : addstr(" "));
-    addstr("]");
-    (avg_cpu_info.usage >= CPU_USAGE_CRITICAL_PERCENT) ? attron(COLOR_PAIR(2) | A_BOLD) : 0;
-    sprintf(buf, " %5.1f%%", avg_cpu_info.usage);
-    addstr(buf);
-    (avg_cpu_info.usage >= CPU_USAGE_CRITICAL_PERCENT) ? attroff(COLOR_PAIR(2) | A_BOLD) : 0;
-    move(now_row + (*line)++, wbuf->ws_col * (BAR_RATIO + 0.2));
-    sprintf(buf, "(Duration: %d sec.)", usage_duration);
-    addstr(buf);
+    if (status == 1){
+        addstr("CPU:      [");
+        for (int i = 0; i < wbuf->ws_col * BAR_RATIO; (i++ < (wbuf->ws_col*BAR_RATIO*(cpu_info.usage / 100))) ? addstr("#") : addstr(" "));
+        addstr("]");
+        (cpu_info.usage >= CPU_USAGE_CRITICAL_PERCENT) ? attron(COLOR_PAIR(2) | A_BOLD) : 0; // Color change if usage >= CPU USAGE CRITICAL POINT
+        sprintf(buf, " %5.1f%%", cpu_info.usage);
+        addstr(buf);
+        (cpu_info.usage >= CPU_USAGE_CRITICAL_PERCENT) ? attroff(COLOR_PAIR(2) | A_BOLD) : 0;
+        // Print CPU Usage (Average during entered duration; %)
+        move(now_row + (*line), now_col);
+        hline(' ', wbuf->ws_col);
+        sprintf(buf, "CPU(AVG): [");
+        addstr(buf);
+        for (int i = 0; i < wbuf->ws_col * BAR_RATIO; (i++ < (wbuf->ws_col*BAR_RATIO*(avg_cpu_info.usage / 100))) ? addstr("#") : addstr(" "));
+        addstr("]");
+        (avg_cpu_info.usage >= CPU_USAGE_CRITICAL_PERCENT) ? attron(COLOR_PAIR(2) | A_BOLD) : 0; // Color change if avg. usage >= CPU AVG USAGE CRITICAL POINT
+        sprintf(buf, " %5.1f%%", avg_cpu_info.usage);
+        addstr(buf);
+        (avg_cpu_info.usage >= CPU_USAGE_CRITICAL_PERCENT) ? attroff(COLOR_PAIR(2) | A_BOLD) : 0;
+        move(now_row + (*line)++, wbuf->ws_col * (BAR_RATIO + 0.2));
+        sprintf(buf, "(Duration: %d sec.)", usage_duration);
+        addstr(buf);
+    } else {
+        hline(' ', wbuf->ws_col);
+        addstr("    - Resources status collector program is not running.");
+        move(now_row + (*line)++, now_col);
+        hline(' ', wbuf->ws_col);
+        addstr("    - Please check whether the program is running.");
+    }
 }
 
 void display_MEM_Info(struct winsize* wbuf, short* line, int now_row, int now_col, UNIT MEM_unit, UNIT SWAP_unit){
@@ -285,12 +323,14 @@ void display_MEM_Info(struct winsize* wbuf, short* line, int now_row, int now_co
     for (int i = 0; i < wbuf->ws_col * BAR_RATIO; (i++ < (wbuf->ws_col*BAR_RATIO*((mem_info.size.mem_total - mem_info.size.mem_free) / (double)mem_info.size.mem_total))) ? addstr("#") : addstr(" "));
     addstr("]");
     ((((mem_info.size.mem_total - mem_info.size.mem_free) / (double)mem_info.size.mem_total) * 100) >= MEM_USAGE_CRITICAL_PERCENT) ? attron(COLOR_PAIR(2) | A_BOLD) : 0;
+    // Change usage color if usage >= MEM USAGE CRITICAL POINT
     sprintf(buf, " %5.1lf%%", ((mem_info.size.mem_total - mem_info.size.mem_free) / (double)mem_info.size.mem_total) * 100);
     addstr(buf);
     ((((mem_info.size.mem_total - mem_info.size.mem_free) / (double)mem_info.size.mem_total) * 100) >= MEM_USAGE_CRITICAL_PERCENT) ? attroff(COLOR_PAIR(2) | A_BOLD) : 0;
     move(now_row + (*line)++, wbuf->ws_col * (BAR_RATIO + 0.2));
     addstr("(");
     ((((mem_info.size.mem_total - mem_info.size.mem_free) / (double)mem_info.size.mem_total) * 100) >= MEM_USAGE_CRITICAL_PERCENT) ? attron(COLOR_PAIR(2) | A_BOLD) : 0;
+    // Change capacity color if usage >= MEM USAGE CRITICAL POINT
     sprintf(buf, "%.2lf%s", convert_Size_Unit(mem_info.size.mem_total - mem_info.size.mem_free, MEM_unit), unitMap[(int)MEM_unit].str);
     addstr(buf);
     ((((mem_info.size.mem_total - mem_info.size.mem_free) / (double)mem_info.size.mem_total) * 100) >= MEM_USAGE_CRITICAL_PERCENT) ? attroff(COLOR_PAIR(2) | A_BOLD) : 0;
@@ -304,6 +344,7 @@ void display_MEM_Info(struct winsize* wbuf, short* line, int now_row, int now_co
     for (int i = 0; i < wbuf->ws_col * BAR_RATIO; (i++ < (wbuf->ws_col*BAR_RATIO*((mem_info.size.swap_total - mem_info.size.swap_free) / (double)mem_info.size.swap_total))) ? addstr("#") : addstr(" "));
     addstr("]");
     ((((mem_info.size.swap_total - mem_info.size.swap_free) / (double)mem_info.size.swap_total) * 100) > SWAP_USAGE_CRITICAL_PERCENT) ? attron(COLOR_PAIR(2) | A_BOLD) : 0;
+    // Change usage color if usage >= SWAP USAGE CRITICAL POINT
     if (mem_info.size.swap_total != 0) {
         sprintf(buf, " %5.1lf%%", ((mem_info.size.swap_total - mem_info.size.swap_free) / (double)mem_info.size.swap_total) * 100);
     } else {
@@ -314,6 +355,7 @@ void display_MEM_Info(struct winsize* wbuf, short* line, int now_row, int now_co
     move(now_row + (*line)++, wbuf->ws_col * (BAR_RATIO + 0.2));
     addstr("(");
     ((((mem_info.size.swap_total - mem_info.size.swap_free) / (double)mem_info.size.swap_total) * 100) > SWAP_USAGE_CRITICAL_PERCENT) ? attron(COLOR_PAIR(2) | A_BOLD) : 0;
+    // Change capacity color if usage >= SWAP USAGE CRITICAL POINT
     sprintf(buf, "%.2lf%s", convert_Size_Unit(mem_info.size.swap_total - mem_info.size.swap_free, SWAP_unit), unitMap[(int)SWAP_unit].str);
     addstr(buf);
     ((((mem_info.size.swap_total - mem_info.size.swap_free) / (double)mem_info.size.swap_total) * 100) > SWAP_USAGE_CRITICAL_PERCENT) ? attroff(COLOR_PAIR(2) | A_BOLD) : 0;
@@ -325,10 +367,15 @@ void display_MEM_Info(struct winsize* wbuf, short* line, int now_row, int now_co
 NET_Result* display_NET_Info(struct winsize* wbuf, NET_Result *net_info, short* line, int now_row, int now_col) {
     NET_Result *cur_pos = NULL;
     UNIT NET_UP_Unit = KB, NET_Down_Unit = KB;
+    DateInfo date = get_Date();
     float upSpeed = 0, downSpeed = 0;
     short max_net_ifa_name_len = 0, i = 0;
     char buf[LEN] = { '\0' };
     net_info = get_IPv4(net_info, &max_net_ifa_name_len, &list_count);
+    if (net_info == NULL){
+        fprintf(stderr, "%s\n", exception(-4, "display_NET_Info", "ifa list", &date));
+        return NULL;
+    }
     max_net_ifa_name_len += 2;
     move(now_row + (*line), 0);
     attron(COLOR_PAIR(1));
@@ -416,13 +463,14 @@ NET_Result* display_NET_Info(struct winsize* wbuf, NET_Result *net_info, short* 
     return net_info;
 }
 
-void display_Disk_Info(){
+void display_Disk_Info(void){
     struct winsize wbuf;
     DISK_Result* head = NULL, *next = NULL;
     short path_max_len = 0, fileSysetm_max_len = 0;
     int now_row = 1, now_col = 0, i;
     char buf[LEN] = { '\0' };
-    (ioctl(0, TIOCGWINSZ, &wbuf) == -1) ? printf("%s", exception(-4, "main", "Windows Size")) : 0;
+    DateInfo date = get_Date();
+    (ioctl(0, TIOCGWINSZ, &wbuf) == -1) ? fprintf(stderr, "%s\n", exception(-4, "main", "Windows Size", &date)) : 0;
 
     display_clear(&wbuf, 0);
     move(now_row, (now_col = wbuf.ws_col * 0.01));
@@ -446,6 +494,10 @@ void display_Disk_Info(){
             return;
         }
         head = get_Partition_Info_List(&list_count);
+        if (head == NULL){
+            fprintf(stderr, "%s\n", exception(-4, "display_Disk_Info", "Partition List", &date));
+            continue;
+        }
         path_max_len = get_Path_Max_Length(head) + 3;
         fileSysetm_max_len = get_fileSystem_Max_Length(head) + 3;
         now_row = 0;
@@ -493,12 +545,14 @@ void display_Disk_Info(){
             for (int i = 0; i < wbuf.ws_col * DISK_BAR_RATIO; (i++ < (wbuf.ws_col*DISK_BAR_RATIO*((head->size.total_space - head->size.free_size) / (double)head->size.total_space))) ? addstr("#") : addstr(" "));
             addstr("]");
             (((head->size.total_space - head->size.free_size) / (double)head->size.total_space) * 100 >= DISK_USAGE_CRITICAL_PERCENT) ? attron(COLOR_PAIR(2) | A_BOLD) : 0;
+            // Change usage color if usage >= DISK USAGE CRITICAL POINT
             sprintf(buf, "%5.1lf%%  ", ((head->size.total_space - head->size.free_size) / (double)head->size.total_space) * 100);
             addstr(buf);
             (((head->size.total_space - head->size.free_size) / (double)head->size.total_space) * 100 >= DISK_USAGE_CRITICAL_PERCENT) ? attroff(COLOR_PAIR(2) | A_BOLD) : 0;
             move(now_row + i, now_col += ((wbuf.ws_col * DISK_BAR_RATIO) + 10));
             addstr("(");
             (((head->size.total_space - head->size.free_size) / (double)head->size.total_space) * 100 >= DISK_USAGE_CRITICAL_PERCENT) ? attron(COLOR_PAIR(2) | A_BOLD) : 0;
+            // Change capacity color if usage >= DISK USAGE CRITICAL POINT
             sprintf(buf, "%.2lf%s", convert_Size_Unit(head->size.total_space - head->size.free_size, DISK_unit), unitMap[(int)DISK_unit].str);
             addstr(buf);
             (((head->size.total_space - head->size.free_size) / (double)head->size.total_space) * 100 >= DISK_USAGE_CRITICAL_PERCENT) ? attroff(COLOR_PAIR(2) | A_BOLD) : 0;
@@ -517,9 +571,6 @@ void display_Disk_Info(){
         display_cnt = (display_cnt == 0) ? i : display_cnt; 
         if ((list_count - display_cnt_const > 0)){ 
             blind = 1;
-            move(0, 0);
-            sprintf(buf, "%d", display_cnt_const);
-            addstr(buf);
             move(wbuf.ws_row - 3, 0);
             hline(' ', wbuf.ws_col);
             move(wbuf.ws_row - 3, now_col = wbuf.ws_col * 0.01);
@@ -540,12 +591,13 @@ void display_Disk_Info(){
     }
 }
 
-void change_settings(){
+void change_settings(void){
     struct winsize wbuf;
     int now_row, now_col, ch, current_line = 1, interval_input, mem_unit_input, cpu_temp_avg_duration_input, cpu_usage_avg_duration_input;
     int swap_unit_input, disk_unit_input, inputCnt = 0, row, col;
     char inputBuf[3] = { '\0' };
-    (ioctl(0, TIOCGWINSZ, &wbuf) == -1) ? printf("%s", exception(-4, "main", "Windows Size")) : 0;
+    DateInfo date = get_Date();
+    (ioctl(0, TIOCGWINSZ, &wbuf) == -1) ? fprintf(stderr, "%s\n", exception(-4, "main", "Windows Size", &date)) : 0;
     curs_set(1);
     display_clear(&wbuf, 0);
     inputCnt = 0;
