@@ -152,7 +152,7 @@ int should_exclude_directory(const char *filepath) {
     return 0;
 }
 
-int cleanup_files_recursive(const char *dirpath, int max_age_days, int deleted_count) {
+int cleanup_files_recursive(const char *dirpath, int max_age_days, int deleted_count, int line) {
     DIR *dir = opendir(dirpath);
     if (!dir) {
         // perror("opendir failed");
@@ -175,7 +175,7 @@ int cleanup_files_recursive(const char *dirpath, int max_age_days, int deleted_c
         if (is_file_in_use(filepath) || is_file_locked(filepath)) {
             continue;
         } else if (S_ISDIR(st.st_mode)) {
-            deleted_count = cleanup_files_recursive(filepath, max_age_days, deleted_count);
+            deleted_count = cleanup_files_recursive(filepath, max_age_days, deleted_count, line);
             if (is_directory_empty(filepath)) {
                 int is_old_enough = file_age_check(filepath, max_age_days);
                 int is_invalid_owner_group = !is_valid_owner_group(filepath);
@@ -185,6 +185,8 @@ int cleanup_files_recursive(const char *dirpath, int max_age_days, int deleted_c
                     } else {
                         log_deletion_record(filepath);
                         deleted_count++; // 파일 삭제 시 카운트 증가
+                        mvprintw(line, 42, "number of deleted file : %d", deleted_count);
+                        refresh();
                     }
                 }
             }
@@ -197,6 +199,8 @@ int cleanup_files_recursive(const char *dirpath, int max_age_days, int deleted_c
                 } else {
                     log_deletion_record(filepath);
                     deleted_count++; // 파일 삭제 시 카운트 증가
+                    mvprintw(line, 42, "number of deleted file : %d", deleted_count);
+                    refresh();
                 }
             }
         }
@@ -205,7 +209,7 @@ int cleanup_files_recursive(const char *dirpath, int max_age_days, int deleted_c
     return deleted_count;
 }
 
-int cleanup_log_files(const char *log_dir, int max_age_days, int deleted_count) {
+int cleanup_log_files(const char *log_dir, int max_age_days, int deleted_count, int line) {
     DIR *dir = opendir(log_dir);
     if (!dir) {
         // perror("opendir failed");
@@ -235,6 +239,8 @@ int cleanup_log_files(const char *log_dir, int max_age_days, int deleted_count) 
                         } else {
                             log_deletion_record(filepath);
                             deleted_count++; // 파일 삭제 시 카운트 증가
+                            mvprintw(line, 42, "number of deleted file : %d", deleted_count);
+                            refresh();
                         }
                     } else {
                         snprintf(filepath, sizeof(filepath), "%s/%s", log_dir, entry->d_name);
@@ -247,6 +253,8 @@ int cleanup_log_files(const char *log_dir, int max_age_days, int deleted_count) 
                             } else {
                                 log_deletion_record(filepath);
                                 deleted_count++; // 파일 삭제 시 카운트 증가
+                                mvprintw(line, 42, "number of deleted file : %d", deleted_count);
+                                refresh();
                             }
                         }
                     }
@@ -301,24 +309,24 @@ int tmpclean() {
 
     if (delete_files) {
         snprintf(message, sizeof(message), "Deleting tmp files from /tmp...");
-        mvprintw(l++, 0, "%s", message);
+        mvprintw(l, 0, "%s", message);
         refresh();
-        deleted_files_count = cleanup_files_recursive("/tmp", 1, deleted_files_count);
+        deleted_files_count = cleanup_files_recursive("/tmp", 1, deleted_files_count, l++);
         
         snprintf(message, sizeof(message), "Deleting tmp files from /var/tmp...");
-        mvprintw(l++, 0, "%s", message);
+        mvprintw(l, 0, "%s", message);
         refresh();
-        deleted_files_count = cleanup_files_recursive("/var/tmp", 7, deleted_files_count);
+        deleted_files_count = cleanup_files_recursive("/var/tmp", 7, deleted_files_count, l++);
         
         snprintf(message, sizeof(message), "Deleting tmp files from /var/cache...");
-        mvprintw(l++, 0, "%s", message);
+        mvprintw(l, 0, "%s", message);
         refresh();
-        deleted_files_count = cleanup_files_recursive("/var/cache", 30, deleted_files_count);
+        deleted_files_count = cleanup_files_recursive("/var/cache", 30, deleted_files_count, l++);
 
         snprintf(message, sizeof(message), "Deleting tmp files from /var/log...");
-        mvprintw(l++, 0, "%s", message);
+        mvprintw(l, 0, "%s", message);
         refresh();
-        deleted_files_count = cleanup_log_files("/var/log", 365, deleted_files_count);
+        deleted_files_count = cleanup_log_files("/var/log", 365, deleted_files_count, l++);
         
         sleep(1);
 

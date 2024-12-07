@@ -35,11 +35,7 @@ int ask_delete_confirmation(int* line) {
     return ask_delete_confirmation(line); // 잘못된 입력 시 다시 묻기
 }
 
-int tmp_cleanup() {
-    initscr();
-    cbreak();
-    curs_set(0);
-
+int tmpclean() {
     int ch;
     int l = 0;
     int delete_files = ask_delete_confirmation(&l);
@@ -49,24 +45,24 @@ int tmp_cleanup() {
 
     if (delete_files) {
         snprintf(message, sizeof(message), "Deleting tmp files from /tmp...");
-        mvprintw(l++, 0, "%s", message);
+        mvprintw(l, 0, "%s", message);
         refresh();
-        deleted_files_count = cleanup_files_recursive("/tmp", 1, deleted_files_count);
+        deleted_files_count = cleanup_files_recursive("/tmp", 1, deleted_files_count, l++);
         
         snprintf(message, sizeof(message), "Deleting tmp files from /var/tmp...");
-        mvprintw(l++, 0, "%s", message);
+        mvprintw(l, 0, "%s", message);
         refresh();
-        deleted_files_count = cleanup_files_recursive("/var/tmp", 7, deleted_files_count);
+        deleted_files_count = cleanup_files_recursive("/var/tmp", 7, deleted_files_count, l++);
         
         snprintf(message, sizeof(message), "Deleting tmp files from /var/cache...");
-        mvprintw(l++, 0, "%s", message);
+        mvprintw(l, 0, "%s", message);
         refresh();
-        deleted_files_count = cleanup_files_recursive("/var/cache", 30, deleted_files_count);
+        deleted_files_count = cleanup_files_recursive("/var/cache", 30, deleted_files_count, l++);
 
         snprintf(message, sizeof(message), "Deleting tmp files from /var/log...");
-        mvprintw(l++, 0, "%s", message);
+        mvprintw(l, 0, "%s", message);
         refresh();
-        deleted_files_count = cleanup_log_files("/var/log", 365, deleted_files_count);
+        deleted_files_count = cleanup_log_files("/var/log", 365, deleted_files_count, l++);
         
         sleep(1);
 
@@ -91,5 +87,6 @@ int tmp_cleanup() {
     {
         getch();
     }
-    endwin();
+
+    return 0;
 }
