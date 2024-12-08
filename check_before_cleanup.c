@@ -1,6 +1,24 @@
 #include "h_for_tmp_cleanup.h"
 #include "check_before_cleanup.h"
 
+int is_valid_date(int year, int month, int day)
+{
+    if (month < 1 || month > 12)
+    {
+        return 0;
+    }
+    int days_in_month[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+    if ((year % 4 == 0 && year % 100 != 0) || (year % 400 == 0))
+    {
+        days_in_month[1] = 29;
+    }
+    if (day < 1 || day > days_in_month[month - 1])
+    {
+        return 0;
+    }
+    return 1;
+}
+
 int file_age_check(const char *filename, int max_age_days)
 {
     struct stat st;
@@ -113,22 +131,4 @@ int should_exclude_directory(const char *filepath)
         }
     }
     return 0;
-}
-
-int is_valid_date(int year, int month, int day)
-{
-    if (month < 1 || month > 12)
-    {
-        return 0;
-    }
-    int days_in_month[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-    if ((year % 4 == 0 && year % 100 != 0) || (year % 400 == 0))
-    {
-        days_in_month[1] = 29;
-    }
-    if (day < 1 || day > days_in_month[month - 1])
-    {
-        return 0;
-    }
-    return 1;
 }

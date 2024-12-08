@@ -1,6 +1,7 @@
 #include "h_for_tmp_cleanup.h"
 #include "check_before_cleanup.h"
 #include "cleanup.h"
+#include "tmp_cleanup.h"
 
 int ask_delete_confirmation(int* line)
 {
@@ -36,7 +37,8 @@ int ask_delete_confirmation(int* line)
     return ask_delete_confirmation(line); // 잘못된 입력 시 다시 묻기
 }
 
-int main() {
+int main()
+{
     int ch;
     int l = 0;
     int delete_files = ask_delete_confirmation(&l);
@@ -48,7 +50,8 @@ int main() {
 
     char message[128];
 
-    if (delete_files) {
+    if (delete_files)
+    {
         snprintf(message, sizeof(message), "Deleting tmp files from /tmp...");
         mvprintw(l, 0, "%s", message);
         refresh();
