@@ -8,13 +8,14 @@ OBJS  =  $(SRCS:.c=.o)
 TARGET   =  tmp_cleanup
 
 DEPS  =   $(SRCS:.c=.o)
+
 all:  $(TARGET)
 
 $(TARGET):  $(OBJS)
-   $(CC) $(CFLAGS)   -o $@ $^ $(LINK)
+	$(CC) $(CFLAGS) -o $@ $^ $(LINK)
 
 %.o   :  %.c
-   $(CC) $(CFLAGS)   -c $< -o $@
+	$(CC) $(CFLAGS)   -c $< -o $@
 
 clean:
-   rm -f $(OBJS)  $(TARGET)
+	rm -f $(OBJS)  $(TARGET)
