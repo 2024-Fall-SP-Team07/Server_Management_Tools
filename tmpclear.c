@@ -559,6 +559,9 @@ void display_menu(MenuItem menu[], int current) {
         }
     }
     refresh();*/
+    const char *title="System management Main menu";
+    int title_x= (COLS-strlen(title))/2;
+    mvprintw(1,title_x,"%s",title);
      int menu_height = MAX_MENU_ITEMS; // 메뉴 항목의 개수
     int start_y = (LINES - menu_height) / 2; // 화면 세로 중앙 계산
     int start_x = (COLS - 20) / 2;  // 화면 가로 중앙 계산 (메뉴 가로 길이 20 기준)
