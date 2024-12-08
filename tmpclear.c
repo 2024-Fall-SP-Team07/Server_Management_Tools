@@ -7,12 +7,6 @@
 
 ncurses를 사용한 임시 파일의 삭제 여부확인, 삭제 진행도 표시, 삭제 완료 표시 구현 완료
 */
-#define _XOPEN_SOURCE 700
-#include <time.h>
-#include <unistd.h>
-#include <sys/ioctl.h>
-#include <ncurses.h>
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,6 +25,7 @@ ncurses를 사용한 임시 파일의 삭제 여부확인, 삭제 진행도 표�
 
 #define MAX_OUTPUT_LEN 512
 #define MAX_USERS 100
+
 int is_valid_date(int year, int month, int day) {
     if (month < 1 || month > 12) {
         return 0;
@@ -355,8 +350,6 @@ int tmpclean() {
     return 0;
 }
 
-
-
 void check_password_expiry(const char *username, char *output) {
    char command[256];
    snprintf(command, sizeof(command), "sudo chage -l %s", username);
@@ -500,6 +493,7 @@ void run_program() {
 #define MAX_MENU_ITEMS 6
 
 
+#define MAX_MENU_ITEMS 5
 
 // 메뉴 항목에 대한 정보를 담고 있는 구조체
 typedef struct {
@@ -560,14 +554,6 @@ void display_menu(MenuItem menu[], int current) {
     refresh();
 }
 
-
-// Function to check password expiry information for a user
-
-
-
-
-
-
 int main() {
     initscr();              // ncurses 초기화
     cbreak();               // 입력을 한 문자씩 받음
@@ -580,7 +566,6 @@ int main() {
         {"Option 2", menu_action_2},
         {"Option 3", menu_action_3},
         {"Option 4", menu_action_4},
-        
         {"Quit", menu_action_exit}  // Quit 메뉴 항목 추가
     };
 
