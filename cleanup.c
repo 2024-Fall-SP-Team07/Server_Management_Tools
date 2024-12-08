@@ -150,3 +150,24 @@ int cleanup_log_files(const char *log_dir, int max_age_days, int deleted_count, 
     closedir(dir);
     return deleted_count;
 }
+
+void log_deletion_record(const char *filename)
+{
+    int log_fd = open("/var/log/00_Server_Management/deleted_tmp_files.log", O_WRONLY | O_APPEND | O_CREAT, 0644);
+    if (log_fd == -1)
+    {
+        // perror("Failed to open log file");
+        return;
+    }
+    time_t now = time(NULL);
+    struct tm *tm_info = localtime(&now);
+    char log_msg[256];
+    snprintf(log_msg, sizeof(log_msg), "[%04d-%02d-%02d %02d:%02d:%02d] Deleted: %s\n",
+             tm_info->tm_year + 1900, tm_info->tm_mon + 1, tm_info->tm_mday,
+             tm_info->tm_hour, tm_info->tm_min, tm_info->tm_sec, filename);
+    if (write(log_fd, log_msg, strlen(log_msg)) == -1)
+    {
+        // perror("Failed to write to log file");
+    }
+    close(log_fd);
+}
