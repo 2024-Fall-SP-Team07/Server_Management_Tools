@@ -1,20 +1,19 @@
-/etc/passwd | root.root, 644
-/etc/shadow | root.root, 640
-/etc/hosts | root.root, 600
-/etc/hosts.allow | root.root, 600
-/etc/hosts.deny | root.root, 600
-/etc/services | root.root, 644
-/etc/sudoers | root.root, 440
-/etc/group | root.root, 644
-/etc/fstab | root.root, 644
-/etc/hosts.equiv | root.root, 600
-/usr/bin/crontab | root.wheel, 750
-/var/lock | root.root, 755
-/boot/grub/grub.cfg | root.root, 600
-/etc/cron.d | root.root, 700
-/etc/resolv.conf | root.root, 644
-/boot | root.root, 755
-/var/log | root.root, 755
-/home/moon/.profile | user.user, 600
-/home/moon/.bashrc | user.user, 600
-/home/moon/.ssh | user.user, 600
+/etc/passwd|root.root,644
+/etc/shadow|root.root,640
+/etc/hosts|root.root,600
+/etc/hosts.allow|root.root,600
+/etc/hosts.deny|root.root,600
+/etc/services|root.root,644
+/etc/sudoers|root.root,440
+/etc/group|root.root,644
+/etc/fstab|root.root,644
+/usr/bin/crontab|root.wheel,750
+/var/lock|root.root,755
+/boot/grub/grub.cfg|root.root,600
+/etc/cron.d|root.root,700
+/etc/resolv.conf|root.root,644
+/boot|root.root,755
+/var/log|root.root,755
+/home/moon/.profile|user.user,600
+/home/moon/.bashrc|user.user,600
+/home/moon/.ssh|user.user,600
