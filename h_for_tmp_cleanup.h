@@ -1,6 +1,6 @@
-#ifndef H_FOR_TMPCLEANUP.H
+#ifndef H_FOR_TMPCLEANUP_H
 
-#define H_FOR_TMPCLEANUP.H
+#define H_FOR_TMPCLEANUP_H
 
 #include <stdio.h>
 #include <stdlib.h>

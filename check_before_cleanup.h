@@ -1,6 +1,6 @@
-#ifndef CLEANUP.H
+#ifndef CLEANUP_H
 
-#define CLEANUP.H
+#define CLEANUP_H
 
 int file_age_check(const char*, int);
 int is_file_in_use(const char*);

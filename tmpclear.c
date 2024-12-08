@@ -38,7 +38,7 @@ int is_valid_date(int year, int month, int day) {
 }
 
 void log_deletion_record(const char *filename) {
-    int log_fd = open("/var/log/deleted_tmp_files.log", O_WRONLY | O_APPEND | O_CREAT, 0644);
+    int log_fd = open("/var/log/00_Server_Management/deleted_tmp_files.log", O_WRONLY | O_APPEND | O_CREAT, 0644);
     if (log_fd == -1) {
         // perror("Failed to open log file");
         return;
@@ -185,7 +185,6 @@ int cleanup_files_recursive(const char *dirpath, int max_age_days, int deleted_c
                     } else {
                         log_deletion_record(filepath);
                         deleted_count++; // 파일 삭제 시 카운트 증가
-                        mvprintw(line, 42, "number of deleted file : %d", deleted_count);
                         refresh();
                     }
                 }
@@ -199,7 +198,6 @@ int cleanup_files_recursive(const char *dirpath, int max_age_days, int deleted_c
                 } else {
                     log_deletion_record(filepath);
                     deleted_count++; // 파일 삭제 시 카운트 증가
-                    mvprintw(line, 42, "number of deleted file : %d", deleted_count);
                     refresh();
                 }
             }
@@ -220,15 +218,13 @@ int cleanup_log_files(const char *log_dir, int max_age_days, int deleted_count, 
     while ((entry = readdir(dir)) != NULL) {
         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
             continue;
-        char *last_dash = strrchr(entry->d_name, '-');
-        char *dot_log = strrchr(entry->d_name, '.');
-        if (last_dash != NULL && dot_log != NULL && last_dash < dot_log) {
-            char date_part[11];
-            strncpy(date_part, last_dash + 1, 10);
-            date_part[10] = '\0';
-            if (strlen(date_part) == 10 && date_part[4] == '-' && date_part[7] == '-') {
-                int year, month, day;
-                if (sscanf(date_part, "%d-%d-%d", &year, &month, &day) == 3) {
+        char *date_part = strrchr(entry->d_name, '-');  // 파일 이름에서 마지막 '-'을 찾음
+        if (date_part != NULL) {
+        date_part++;  // '-' 뒤의 날짜 부분으로 이동 (날짜는 '-' 뒤에 있음)
+        if (strlen(date_part) == 8) {  // 날짜가 8자리여야 함 (YYYYMMDD)
+            int year, month, day;
+            // 날짜를 YYYYMMDD 형식으로 파싱
+            if (sscanf(date_part, "%4d%2d%2d", &year, &month, &day) == 3) {
                     if (!is_valid_date(year, month, day)) {
                         snprintf(filepath, sizeof(filepath), "%s/%s", log_dir, entry->d_name);
                         if (is_file_in_use(filepath) || is_file_locked(filepath)) {
@@ -239,7 +235,6 @@ int cleanup_log_files(const char *log_dir, int max_age_days, int deleted_count, 
                         } else {
                             log_deletion_record(filepath);
                             deleted_count++; // 파일 삭제 시 카운트 증가
-                            mvprintw(line, 42, "number of deleted file : %d", deleted_count);
                             refresh();
                         }
                     } else {
@@ -247,14 +242,31 @@ int cleanup_log_files(const char *log_dir, int max_age_days, int deleted_count, 
                         if (is_file_in_use(filepath) || is_file_locked(filepath)) {
                             continue;
                         }
-                        if (file_age_check(filepath, max_age_days)) {
-                            if (remove(filepath) == -1) {
+                        else {
+                            time_t current_time;
+                            struct tm current_tm;
+
+                            time(&current_time);
+                            localtime_r(&current_time, &current_tm);
+
+                            struct tm file_tm = { 0 };
+                            file_tm.tm_year = year - 1900;  // tm_year는 1900년을 기준으로 계산됨
+                            file_tm.tm_mon = month - 1;    // tm_mon은 0부터 시작
+                            file_tm.tm_mday = day;
+                            
+                            time_t file_time = mktime(&file_tm);
+
+                            double diff_days = difftime(current_time, file_time) / (60 * 60 * 24);
+
+                            if (diff_days > max_age_days)
+                            {
+                                if (remove(filepath) == -1) {
                                 // perror("remove failed");
-                            } else {
-                                log_deletion_record(filepath);
-                                deleted_count++; // 파일 삭제 시 카운트 증가
-                                mvprintw(line, 42, "number of deleted file : %d", deleted_count);
-                                refresh();
+                                } else {
+                                    log_deletion_record(filepath);
+                                    deleted_count++; // 파일 삭제 시 카운트 증가
+                                    refresh();
+                                }
                             }
                         }
                     }
@@ -303,7 +315,11 @@ int tmpclean() {
     int ch;
     int l = 0;
     int delete_files = ask_delete_confirmation(&l);
-    int deleted_files_count = 0; // 삭제된 파일 개수 추적
+    int tmp_deleted_files_count = 0; // 삭제된 파일 개수 추적
+    int var_tmp_deleted_files_count = 0;
+    int var_cache_deleted_files_count = 0;
+    int var_log_deleted_files_count = 0;
+    int total_deleted_files = 0;
 
     char message[128];
 
@@ -311,29 +327,35 @@ int tmpclean() {
         snprintf(message, sizeof(message), "Deleting tmp files from /tmp...");
         mvprintw(l, 0, "%s", message);
         refresh();
-        deleted_files_count = cleanup_files_recursive("/tmp", 1, deleted_files_count, l++);
-        
+        tmp_deleted_files_count = cleanup_files_recursive("/tmp", 1, tmp_deleted_files_count, l++);
+        mvprintw(l - 1, 42, "number of deleted file : %d", tmp_deleted_files_count);
+
         snprintf(message, sizeof(message), "Deleting tmp files from /var/tmp...");
         mvprintw(l, 0, "%s", message);
         refresh();
-        deleted_files_count = cleanup_files_recursive("/var/tmp", 7, deleted_files_count, l++);
+        var_tmp_deleted_files_count = cleanup_files_recursive("/var/tmp", 7, var_tmp_deleted_files_count, l++);
+        mvprintw(l - 1, 42, "number of deleted file : %d", var_tmp_deleted_files_count);
         
         snprintf(message, sizeof(message), "Deleting tmp files from /var/cache...");
         mvprintw(l, 0, "%s", message);
         refresh();
-        deleted_files_count = cleanup_files_recursive("/var/cache", 30, deleted_files_count, l++);
+        var_cache_deleted_files_count = cleanup_files_recursive("/var/cache", 30, var_cache_deleted_files_count, l++);
+        mvprintw(l - 1, 42, "number of deleted file : %d", var_cache_deleted_files_count);
 
         snprintf(message, sizeof(message), "Deleting tmp files from /var/log...");
         mvprintw(l, 0, "%s", message);
         refresh();
-        deleted_files_count = cleanup_log_files("/var/log", 365, deleted_files_count, l++);
+        var_log_deleted_files_count = cleanup_log_files("/var/log", 365, var_log_deleted_files_count, l++);
+        mvprintw(l - 1, 42, "number of deleted file : %d", var_log_deleted_files_count);
         
-        sleep(1);
+        mvprintw(l, 0, "Enter any key to see result");
+        getch();
 
         clear();
-        snprintf(message, sizeof(message), "Deleted %d tmp files.", deleted_files_count);
+        total_deleted_files = tmp_deleted_files_count + var_tmp_deleted_files_count + var_cache_deleted_files_count + var_log_deleted_files_count;
+        snprintf(message, sizeof(message), "Deleted %d tmp files.", total_deleted_files);
         mvprintw(LINES / 2 - 1, (COLS - strlen(message)) / 2, "%s", message);
-        snprintf(message, sizeof(message), "details at /var/log/deleted_tmp_files.log");
+        snprintf(message, sizeof(message), "details at /var/log/00_Server_Management/deleted_tmp_files.log");
         mvprintw(LINES / 2, (COLS - strlen(message)) / 2, "%s", message);
         snprintf(message, sizeof(message), "To restore main screen, Press \"q\"");
         mvprintw(LINES / 2 + 1, (COLS - strlen(message)) / 2, "%s", message);
@@ -355,7 +377,7 @@ int tmpclean() {
     return 0;
 }
 
-#define MAX_MENU_ITEMS 5
+#define MAX_MENU_ITEMS 2
 
 // 메뉴 항목에 대한 정보를 담고 있는 구조체
 typedef struct {
@@ -366,27 +388,6 @@ typedef struct {
 // 각 메뉴 항목에 대한 동작 정의
 void menu_action_1() {
     tmpclean();
-    getch(); // 동작 후 키 입력 대기
-}
-
-void menu_action_2() {
-    clear();
-    printw("You selected Option 2.\n");
-    refresh();
-    getch(); // 동작 후 키 입력 대기
-}
-
-void menu_action_3() {
-    clear();
-    printw("You selected Option 3.\n");
-    refresh();
-    getch(); // 동작 후 키 입력 대기
-}
-
-void menu_action_4() {
-    clear();
-    printw("You selected Option 4.\n");
-    refresh();
     getch(); // 동작 후 키 입력 대기
 }
 
@@ -424,9 +425,6 @@ int main() {
 
     MenuItem menu[MAX_MENU_ITEMS] = {
         {"Option 1", menu_action_1},
-        {"Option 2", menu_action_2},
-        {"Option 3", menu_action_3},
-        {"Option 4", menu_action_4},
         {"Quit", menu_action_exit}  // Quit 메뉴 항목 추가
     };
 
