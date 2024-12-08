@@ -39,6 +39,11 @@ int ask_delete_confirmation(int* line)
 
 int main()
 {
+    initscr();
+    cbreak();
+    curs_set(0);
+    noecho();
+    
     int ch;
     int l = 0;
     int delete_files = ask_delete_confirmation(&l);
