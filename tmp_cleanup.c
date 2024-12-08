@@ -36,8 +36,7 @@ int ask_delete_confirmation(int* line)
     return ask_delete_confirmation(line); // 잘못된 입력 시 다시 묻기
 }
 
-int tmpclean()
-{
+int main() {
     int ch;
     int l = 0;
     int delete_files = ask_delete_confirmation(&l);
@@ -49,31 +48,30 @@ int tmpclean()
 
     char message[128];
 
-    if (delete_files)
-    {
+    if (delete_files) {
         snprintf(message, sizeof(message), "Deleting tmp files from /tmp...");
         mvprintw(l, 0, "%s", message);
         refresh();
-        tmp_deleted_files_count = cleanup_files_recursive("/tmp", 1, tmp_deleted_files_count, l++);
-        mvprintw(l - 1, 42, "number of deleted file : %d", tmp_deleted_files_count);
+        tmp_deleted_files_count = cleanup_files_recursive("/tmp", 1, tmp_deleted_files_count);
+        mvprintw(l++, 42, "number of deleted file : %d", tmp_deleted_files_count);
 
         snprintf(message, sizeof(message), "Deleting tmp files from /var/tmp...");
         mvprintw(l, 0, "%s", message);
         refresh();
-        var_tmp_deleted_files_count = cleanup_files_recursive("/var/tmp", 7, var_tmp_deleted_files_count, l++);
-        mvprintw(l - 1, 42, "number of deleted file : %d", var_tmp_deleted_files_count);
+        var_tmp_deleted_files_count = cleanup_files_recursive("/var/tmp", 7, var_tmp_deleted_files_count);
+        mvprintw(l++, 42, "number of deleted file : %d", var_tmp_deleted_files_count);
         
         snprintf(message, sizeof(message), "Deleting tmp files from /var/cache...");
         mvprintw(l, 0, "%s", message);
         refresh();
-        var_cache_deleted_files_count = cleanup_files_recursive("/var/cache", 30, var_cache_deleted_files_count, l++);
-        mvprintw(l - 1, 42, "number of deleted file : %d", var_cache_deleted_files_count);
+        var_cache_deleted_files_count = cleanup_files_recursive("/var/cache", 30, var_cache_deleted_files_count);
+        mvprintw(l++, 42, "number of deleted file : %d", var_cache_deleted_files_count);
 
         snprintf(message, sizeof(message), "Deleting tmp files from /var/log...");
         mvprintw(l, 0, "%s", message);
         refresh();
-        var_log_deleted_files_count = cleanup_log_files("/var/log", 365, var_log_deleted_files_count, l++);
-        mvprintw(l - 1, 42, "number of deleted file : %d", var_log_deleted_files_count);
+        var_log_deleted_files_count = cleanup_log_files("/var/log", 365, var_log_deleted_files_count);
+        mvprintw(l++, 42, "number of deleted file : %d", var_log_deleted_files_count);
         
         mvprintw(l, 0, "Enter any key to see result");
         getch();
