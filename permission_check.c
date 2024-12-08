@@ -9,6 +9,7 @@
 #include <time.h>
 #include <ncurses.h>
 
+#define MAX_LINE_LENGTH_A 512
 #define MAX_LINE_LENGTH 256
 #define MAX_ITEMS_PER_PAGE 10
 #define LOG_FILE_PREFIX "permission_fix_log_"
@@ -16,8 +17,8 @@
 typedef struct {
     char filename[MAX_LINE_LENGTH];
     char path[MAX_LINE_LENGTH];
-    char old_owner[MAX_LINE_LENGTH];
-    char new_owner[MAX_LINE_LENGTH];
+    char old_owner[MAX_LINE_LENGTH_A];
+    char new_owner[MAX_LINE_LENGTH_A];
     char old_perms[16];
     char new_perms[16];
 } FileLog;
@@ -35,6 +36,14 @@ void get_current_time(char *buffer, size_t size) {
     strftime(buffer, size, "%Y%m%d_%H%M%S", t);
 }
 
+void truncate_string(const char *input, char *output, size_t max_length) {
+    if (strlen(input) > max_length) {
+        snprintf(output, max_length + 1, "%.*s...", (int)(max_length - 3), input);
+    } else {
+        strcpy(output, input);
+    }
+}
+
 int parse_permissions(const char *filename, FilePermission **permissions, int *count) {
     FILE *file = fopen(filename, "r");
     if (!file) {
@@ -49,9 +58,23 @@ int parse_permissions(const char *filename, FilePermission **permissions, int *c
         FilePermission temp;
         char owner_group[MAX_LINE_LENGTH];
         if (sscanf(line, "%[^|]|%[^,],%o", temp.path, owner_group, &temp.perms) == 3) {
-            sscanf(owner_group, "%[^.].%s", temp.owner, temp.group);
-            *permissions = realloc(*permissions, sizeof(FilePermission) * (i + 1));
+            if (sscanf(owner_group, "%[^.].%s", temp.owner, temp.group) != 2) {
+                fprintf(stderr, "Invalid owner.group format: %s\n", owner_group);
+                continue;
+            }
+
+            FilePermission *new_permissions = realloc(*permissions, sizeof(FilePermission) * (i + 1));
+            if (!new_permissions) {
+                perror("Memory allocation failed");
+                free(*permissions);
+                fclose(file);
+                return -1;
+            }
+
+            *permissions = new_permissions;
             (*permissions)[i++] = temp;
+        } else {
+            fprintf(stderr, "Invalid line format: %s\n", line);
         }
     }
 
@@ -88,22 +111,43 @@ int check_and_fix_permissions(FilePermission *permissions, int count, FileLog **
         if (current_perms != permissions[i].perms ||
             strcmp(pwd->pw_name, permissions[i].owner) != 0 ||
             strcmp(grp->gr_name, permissions[i].group) != 0) {
-            
-            uid_t uid = getpwnam(permissions[i].owner)->pw_uid;
-            gid_t gid = getgrnam(permissions[i].group)->gr_gid;
-            chown(permissions[i].path, uid, gid);
 
+            struct passwd *new_pwd = getpwnam(permissions[i].owner);
+            struct group *new_grp = getgrnam(permissions[i].group);
+
+            if (!new_pwd || !new_grp) {
+                fprintf(stderr, "[ERROR] Invalid owner or group for %s: %s.%s\n",
+                        permissions[i].path, permissions[i].owner, permissions[i].group);
+                continue;
+            }
+
+            uid_t uid = new_pwd->pw_uid;
+            gid_t gid = new_grp->gr_gid;
+
+            chown(permissions[i].path, uid, gid);
             chmod(permissions[i].path, permissions[i].perms);
 
             FileLog log_entry;
-            snprintf(log_entry.filename, sizeof(log_entry.filename), "%s", strrchr(permissions[i].path, '/') + 1);
+            const char *basename = strrchr(permissions[i].path, '/');
+            if (basename) {
+                snprintf(log_entry.filename, sizeof(log_entry.filename), "%s", basename + 1);
+            } else {
+                snprintf(log_entry.filename, sizeof(log_entry.filename), "%s", permissions[i].path);
+            }
             snprintf(log_entry.path, sizeof(log_entry.path), "%s", permissions[i].path);
             snprintf(log_entry.old_owner, sizeof(log_entry.old_owner), "%s.%s", pwd->pw_name, grp->gr_name);
             snprintf(log_entry.new_owner, sizeof(log_entry.new_owner), "%s.%s", permissions[i].owner, permissions[i].group);
             snprintf(log_entry.old_perms, sizeof(log_entry.old_perms), "%o", current_perms);
             snprintf(log_entry.new_perms, sizeof(log_entry.new_perms), "%o", permissions[i].perms);
 
-            *logs = realloc(*logs, sizeof(FileLog) * (*log_count + 1));
+            FileLog *new_logs = realloc(*logs, sizeof(FileLog) * (*log_count + 1));
+            if (!new_logs) {
+                perror("Memory allocation failed");
+                free(*logs);
+                fclose(log);
+                return -1;
+            }
+            *logs = new_logs;
             (*logs)[(*log_count)++] = log_entry;
 
             fprintf(log, "%s | %s.%s,%o -> %s.%s,%o\n",
@@ -130,11 +174,21 @@ void display_page(FileLog *logs, int total_files, int invalid_files, const char 
     int start = page * MAX_ITEMS_PER_PAGE;
     int end = (start + MAX_ITEMS_PER_PAGE < count) ? start + MAX_ITEMS_PER_PAGE : count;
 
+    char truncated_filename[16];
+    char truncated_path[18];
+    char truncated_old_owner[22];
+    char truncated_new_owner[22];
+
     for (int i = start, row = 5; i < end; i++, row++) {
+        truncate_string(logs[i].filename, truncated_filename, 14);
+        truncate_string(logs[i].path, truncated_path, 16);
+        truncate_string(logs[i].old_owner, truncated_old_owner, 20);
+        truncate_string(logs[i].new_owner, truncated_new_owner, 20);
+
         mvprintw(row, 0, "%-14s %-16s %-20s -> %-20s %-14s -> %-14s",
-                 logs[i].filename,
-                 logs[i].path,
-                 logs[i].old_owner, logs[i].new_owner,
+                 truncated_filename,
+                 truncated_path,
+                 truncated_old_owner, truncated_new_owner,
                  logs[i].old_perms, logs[i].new_perms);
     }
 
@@ -184,7 +238,14 @@ int main() {
 
     char timestamp[64];
     get_current_time(timestamp, sizeof(timestamp));
-    snprintf(log_file, sizeof(log_file), "%s%s.txt", LOG_FILE_PREFIX, timestamp);
+    snprintf(log_file, sizeof(log_file), "/var/log/00_Server_Management/%s%s.txt", LOG_FILE_PREFIX, timestamp);
+
+    struct stat st;
+    if (stat("/var/log/00_Server_Management/", &st) == -1) {
+        perror("Log directory does not exist. Please create it.");
+        free(permissions);
+        return EXIT_FAILURE;
+    }
 
     int invalid_files = check_and_fix_permissions(permissions, count, &logs, &log_count, log_file);
 
