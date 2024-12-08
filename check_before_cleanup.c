@@ -105,7 +105,7 @@ int should_exclude_directory(const char *filepath)
         "/var/cache/PackageKit",
         "/var/cache/fontconfig"
     };
-    for (int i = 0; i < sizeof(exclude_dirs) / sizeof(exclude_dirs[0]); i++)
+    for (unsigned int i = 0; i < sizeof(exclude_dirs) / sizeof(exclude_dirs[0]); i++)
     {
         if (strncmp(filepath, exclude_dirs[i], strlen(exclude_dirs[i])) == 0)
         {

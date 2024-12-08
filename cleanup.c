@@ -2,7 +2,25 @@
 #include "check_before_cleanup.h"
 #include "cleanup.h"
 
-int cleanup_files_recursive(const char *dirpath, int max_age_days, int deleted_count, int line)
+void log_deletion_record(const char *filename) {
+    int log_fd = open("/var/log/00_Server_Management/deleted_tmp_files.log", O_WRONLY | O_APPEND | O_CREAT, 0644);
+    if (log_fd == -1) {
+        // perror("Failed to open log file");
+        return;
+    }
+    time_t now = time(NULL);
+    struct tm *tm_info = localtime(&now);
+    char log_msg[256];
+    snprintf(log_msg, sizeof(log_msg), "[%04d-%02d-%02d %02d:%02d:%02d] Deleted: %s\n",
+             tm_info->tm_year + 1900, tm_info->tm_mon + 1, tm_info->tm_mday,
+             tm_info->tm_hour, tm_info->tm_min, tm_info->tm_sec, filename);
+    if (write(log_fd, log_msg, strlen(log_msg)) == -1) {
+        // perror("Failed to write to log file");
+    }
+    close(log_fd);
+}
+
+int cleanup_files_recursive(const char *dirpath, int max_age_days, int deleted_count)
 {
     DIR *dir = opendir(dirpath);
     if (!dir)
@@ -33,7 +51,7 @@ int cleanup_files_recursive(const char *dirpath, int max_age_days, int deleted_c
         }
         else if (S_ISDIR(st.st_mode))
         {
-            deleted_count = cleanup_files_recursive(filepath, max_age_days, deleted_count, line);
+            deleted_count = cleanup_files_recursive(filepath, max_age_days, deleted_count);
             if (is_directory_empty(filepath))
             {
                 int is_old_enough = file_age_check(filepath, max_age_days);
@@ -48,7 +66,6 @@ int cleanup_files_recursive(const char *dirpath, int max_age_days, int deleted_c
                     {
                         log_deletion_record(filepath);
                         deleted_count++; // 파일 삭제 시 카운트 증가
-                        mvprintw(line, 42, "number of deleted file : %d", deleted_count);
                         refresh();
                     }
                 }
@@ -68,7 +85,6 @@ int cleanup_files_recursive(const char *dirpath, int max_age_days, int deleted_c
                 {
                     log_deletion_record(filepath);
                     deleted_count++; // 파일 삭제 시 카운트 증가
-                    mvprintw(line, 42, "number of deleted file : %d", deleted_count);
                     refresh();
                 }
             }
@@ -78,7 +94,7 @@ int cleanup_files_recursive(const char *dirpath, int max_age_days, int deleted_c
     return deleted_count;
 }
 
-int cleanup_log_files(const char *log_dir, int max_age_days, int deleted_count, int line)
+int cleanup_log_files(const char *log_dir, int max_age_days, int deleted_count)
 {
     DIR *dir = opendir(log_dir);
     if (!dir)
@@ -117,7 +133,6 @@ int cleanup_log_files(const char *log_dir, int max_age_days, int deleted_count, 
                         {
                             log_deletion_record(filepath);
                             deleted_count++; // 파일 삭제 시 카운트 증가
-                            mvprintw(line, 42, "number of deleted file : %d", deleted_count);
                             refresh();
                         }
                     }
@@ -128,18 +143,35 @@ int cleanup_log_files(const char *log_dir, int max_age_days, int deleted_count, 
                         {
                             continue;
                         }
-                        if (file_age_check(filepath, max_age_days))
+                        else
                         {
-                            if (remove(filepath) == -1)
+                            time_t current_time;
+                            struct tm current_tm;
+
+                            time(&current_time);
+                            localtime_r(&current_time, &current_tm);
+
+                            struct tm file_tm = { 0 };
+                            file_tm.tm_year = year - 1900;  // tm_year는 1900년을 기준으로 계산됨
+                            file_tm.tm_mon = month - 1;    // tm_mon은 0부터 시작
+                            file_tm.tm_mday = day;
+                            
+                            time_t file_time = mktime(&file_tm);
+
+                            double diff_days = difftime(current_time, file_time) / (60 * 60 * 24);
+
+                            if (diff_days > max_age_days)
                             {
+                                if (remove(filepath) == -1)
+                                {
                                 // perror("remove failed");
-                            }
-                            else
-                            {
-                                log_deletion_record(filepath);
-                                deleted_count++; // 파일 삭제 시 카운트 증가
-                                mvprintw(line, 42, "number of deleted file : %d", deleted_count);
-                                refresh();
+                                }
+                                else
+                                {
+                                    log_deletion_record(filepath);
+                                    deleted_count++; // 파일 삭제 시 카운트 증가
+                                    refresh();
+                                }
                             }
                         }
                     }
@@ -149,25 +181,4 @@ int cleanup_log_files(const char *log_dir, int max_age_days, int deleted_count, 
     }
     closedir(dir);
     return deleted_count;
-}
-
-void log_deletion_record(const char *filename)
-{
-    int log_fd = open("/var/log/00_Server_Management/deleted_tmp_files.log", O_WRONLY | O_APPEND | O_CREAT, 0644);
-    if (log_fd == -1)
-    {
-        // perror("Failed to open log file");
-        return;
-    }
-    time_t now = time(NULL);
-    struct tm *tm_info = localtime(&now);
-    char log_msg[256];
-    snprintf(log_msg, sizeof(log_msg), "[%04d-%02d-%02d %02d:%02d:%02d] Deleted: %s\n",
-             tm_info->tm_year + 1900, tm_info->tm_mon + 1, tm_info->tm_mday,
-             tm_info->tm_hour, tm_info->tm_min, tm_info->tm_sec, filename);
-    if (write(log_fd, log_msg, strlen(log_msg)) == -1)
-    {
-        // perror("Failed to write to log file");
-    }
-    close(log_fd);
 }

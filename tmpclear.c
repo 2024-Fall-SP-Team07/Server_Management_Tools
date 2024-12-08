@@ -144,7 +144,7 @@ int should_exclude_directory(const char *filepath) {
         "/var/cache/PackageKit",
         "/var/cache/fontconfig"
     };
-    for (int i = 0; i < sizeof(exclude_dirs) / sizeof(exclude_dirs[0]); i++) {
+    for (unsigned int i = 0; i < sizeof(exclude_dirs) / sizeof(exclude_dirs[0]); i++) {
         if (strncmp(filepath, exclude_dirs[i], strlen(exclude_dirs[i])) == 0) {
             return 1;
         }
@@ -152,7 +152,7 @@ int should_exclude_directory(const char *filepath) {
     return 0;
 }
 
-int cleanup_files_recursive(const char *dirpath, int max_age_days, int deleted_count, int line) {
+int cleanup_files_recursive(const char *dirpath, int max_age_days, int deleted_count) {
     DIR *dir = opendir(dirpath);
     if (!dir) {
         // perror("opendir failed");
@@ -175,7 +175,7 @@ int cleanup_files_recursive(const char *dirpath, int max_age_days, int deleted_c
         if (is_file_in_use(filepath) || is_file_locked(filepath)) {
             continue;
         } else if (S_ISDIR(st.st_mode)) {
-            deleted_count = cleanup_files_recursive(filepath, max_age_days, deleted_count, line);
+            deleted_count = cleanup_files_recursive(filepath, max_age_days, deleted_count);
             if (is_directory_empty(filepath)) {
                 int is_old_enough = file_age_check(filepath, max_age_days);
                 int is_invalid_owner_group = !is_valid_owner_group(filepath);
@@ -207,7 +207,7 @@ int cleanup_files_recursive(const char *dirpath, int max_age_days, int deleted_c
     return deleted_count;
 }
 
-int cleanup_log_files(const char *log_dir, int max_age_days, int deleted_count, int line) {
+int cleanup_log_files(const char *log_dir, int max_age_days, int deleted_count) {
     DIR *dir = opendir(log_dir);
     if (!dir) {
         // perror("opendir failed");
@@ -327,26 +327,26 @@ int tmpclean() {
         snprintf(message, sizeof(message), "Deleting tmp files from /tmp...");
         mvprintw(l, 0, "%s", message);
         refresh();
-        tmp_deleted_files_count = cleanup_files_recursive("/tmp", 1, tmp_deleted_files_count, l++);
-        mvprintw(l - 1, 42, "number of deleted file : %d", tmp_deleted_files_count);
+        tmp_deleted_files_count = cleanup_files_recursive("/tmp", 1, tmp_deleted_files_count);
+        mvprintw(l++, 42, "number of deleted file : %d", tmp_deleted_files_count);
 
         snprintf(message, sizeof(message), "Deleting tmp files from /var/tmp...");
         mvprintw(l, 0, "%s", message);
         refresh();
-        var_tmp_deleted_files_count = cleanup_files_recursive("/var/tmp", 7, var_tmp_deleted_files_count, l++);
-        mvprintw(l - 1, 42, "number of deleted file : %d", var_tmp_deleted_files_count);
+        var_tmp_deleted_files_count = cleanup_files_recursive("/var/tmp", 7, var_tmp_deleted_files_count);
+        mvprintw(l++, 42, "number of deleted file : %d", var_tmp_deleted_files_count);
         
         snprintf(message, sizeof(message), "Deleting tmp files from /var/cache...");
         mvprintw(l, 0, "%s", message);
         refresh();
-        var_cache_deleted_files_count = cleanup_files_recursive("/var/cache", 30, var_cache_deleted_files_count, l++);
-        mvprintw(l - 1, 42, "number of deleted file : %d", var_cache_deleted_files_count);
+        var_cache_deleted_files_count = cleanup_files_recursive("/var/cache", 30, var_cache_deleted_files_count);
+        mvprintw(l++, 42, "number of deleted file : %d", var_cache_deleted_files_count);
 
         snprintf(message, sizeof(message), "Deleting tmp files from /var/log...");
         mvprintw(l, 0, "%s", message);
         refresh();
-        var_log_deleted_files_count = cleanup_log_files("/var/log", 365, var_log_deleted_files_count, l++);
-        mvprintw(l - 1, 42, "number of deleted file : %d", var_log_deleted_files_count);
+        var_log_deleted_files_count = cleanup_log_files("/var/log", 365, var_log_deleted_files_count);
+        mvprintw(l++, 42, "number of deleted file : %d", var_log_deleted_files_count);
         
         mvprintw(l, 0, "Enter any key to see result");
         getch();

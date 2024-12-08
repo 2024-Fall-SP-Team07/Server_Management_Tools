@@ -2,7 +2,7 @@ CC =  gcc
 CFLAGS   =  -Wall -Wextra  -Werror
 LINK  =  -lncurses
 
-SRCS  =  tmp_cleanup.c  cleanup.c   check_before_cleanup.c
+SRCS  =  check_before_cleanup.c cleanup.c tmp_cleanup.c
 OBJS  =  $(SRCS:.c=.o)
 
 TARGET   =  tmp_cleanup
