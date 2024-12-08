@@ -7,6 +7,12 @@
 
 ncurses를 사용한 임시 파일의 삭제 여부확인, 삭제 진행도 표시, 삭제 완료 표시 구현 완료
 */
+#define _XOPEN_SOURCE 700
+#include <time.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
+#include <ncurses.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -25,7 +31,6 @@ ncurses를 사용한 임시 파일의 삭제 여부확인, 삭제 진행도 표�
 
 #define MAX_OUTPUT_LEN 512
 #define MAX_USERS 100
-
 int is_valid_date(int year, int month, int day) {
     if (month < 1 || month > 12) {
         return 0;
@@ -350,6 +355,8 @@ int tmpclean() {
     return 0;
 }
 
+
+
 void check_password_expiry(const char *username, char *output) {
    char command[256];
    snprintf(command, sizeof(command), "sudo chage -l %s", username);
@@ -490,10 +497,9 @@ void run_program() {
 
 
 
-#define MAX_MENU_ITEMS 6
-
-
 #define MAX_MENU_ITEMS 5
+
+
 
 // 메뉴 항목에 대한 정보를 담고 있는 구조체
 typedef struct {
@@ -540,6 +546,7 @@ void menu_action_exit() {
 
 // 메뉴 UI를 출력하는 함수
 void display_menu(MenuItem menu[], int current) {
+    /*
     clear(); // 화면을 지운다
 
     for (int i = 0; i < MAX_MENU_ITEMS; i++) {
@@ -551,8 +558,32 @@ void display_menu(MenuItem menu[], int current) {
             attroff(A_REVERSE); // 반전 효과 종료
         }
     }
+    refresh();*/
+     int menu_height = MAX_MENU_ITEMS; // 메뉴 항목의 개수
+    int start_y = (LINES - menu_height) / 2; // 화면 세로 중앙 계산
+    int start_x = (COLS - 20) / 2;  // 화면 가로 중앙 계산 (메뉴 가로 길이 20 기준)
+
+    for (int i = 0; i < MAX_MENU_ITEMS; i++) {
+        if (i == current) {
+            attron(A_REVERSE); // 현재 선택된 항목은 반전 효과
+        }
+        mvprintw(start_y + i, start_x, "%s", menu[i].label); // 중앙에 메뉴 출력
+        if (i == current) {
+            attroff(A_REVERSE); // 반전 효과 종료
+        }
+    }
     refresh();
+
+
 }
+
+
+// Function to check password expiry information for a user
+
+
+
+
+
 
 int main() {
     initscr();              // ncurses 초기화
@@ -562,10 +593,10 @@ int main() {
     curs_set(0);            // 커서 숨김
 
     MenuItem menu[MAX_MENU_ITEMS] = {
-        {"Option 1", menu_action_1},
-        {"Option 2", menu_action_2},
-        {"Option 3", menu_action_3},
-        {"Option 4", menu_action_4},
+        {"1. Temporary_File_Cleaning", menu_action_1},
+        {"2. Password_Checking", menu_action_2},
+        {"3. Log_Checking", menu_action_3},
+        {"4. Permission_Checking", menu_action_4},
         {"Quit", menu_action_exit}  // Quit 메뉴 항목 추가
     };
 
@@ -573,6 +604,7 @@ int main() {
     int ch;
 
     while (1) {
+        erase();
         display_menu(menu, current); // 메뉴를 화면에 표시
 
         ch = getch(); // 사용자 입력 받기
