@@ -168,7 +168,7 @@ void display_page(FileLog *logs, int total_files, int invalid_files, const char 
     mvprintw(0, 0, "# of total files: %d | # of invalid files: %d", total_files, invalid_files);
     mvprintw(1, 0, "Detail data is saved to log file: %s", log_file);
     mvprintw(2, 0, "------------------------------------------------------------------------------------------------------");
-    mvprintw(3, 0, "File Name      Path             Owner.Group(Priv->Cur)         Permission(Priv->Cur)");
+    mvprintw(3, 0, "File Name      Path             Owner.Group(Priv->Cur)                       Permission(Priv->Cur)");
     mvprintw(4, 0, "------------------------------------------------------------------------------------------------------");
 
     int start = page * MAX_ITEMS_PER_PAGE;
