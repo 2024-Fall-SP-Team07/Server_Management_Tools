@@ -14,6 +14,7 @@
 #include <signal.h>
 #include <fcntl.h>
 #include <ctype.h>
+#include <pthread.h>
 
 const Unit_Mapping unitMap[] = {
     { KB, "KB" },
@@ -134,7 +135,7 @@ void display_main(void){
     struct winsize wbuf;
     DateInfo date = get_Date();
     (ioctl(0, TIOCGWINSZ, &wbuf) == -1) ? fprintf(stderr, "%s\n", exception(-4, "main", "Windows Size", &date)) : 0;
-    int now_row = 0, now_col = 0, fd, flags;
+    int now_row = 0, now_col = 0, fd, flags, status = 0;
     short line = 1;
     char buf[LEN] = { '\0' };
     NET_Result* net_info = NULL;
@@ -156,13 +157,15 @@ void display_main(void){
         addstr(buf); 
         now_row = 3;
         now_col = wbuf.ws_col * 0.01;
-        line = 2;
+        line = 12;
         move(now_row, now_col);
         display_System_Info(now_row, now_col);
         move(now_row += 1, now_col);
 
-        display_CPU_Info(&wbuf, &line, cpu_temp_avg_duration, cpu_usage_avg_duration, now_row, now_col);
-        display_MEM_Info(&wbuf, &line, now_row, now_col, MEM_unit, SWAP_unit);
+        display_CPU_Info(&wbuf, &status, cpu_temp_avg_duration, cpu_usage_avg_duration, now_row, now_col);
+        if (status == 1){
+            display_MEM_Info(&wbuf, now_row, now_col, MEM_unit, SWAP_unit);
+        }
         net_info = display_NET_Info(&wbuf, net_info, &line, now_row, now_col);  
 
         attron(COLOR_PAIR(1));
@@ -214,13 +217,15 @@ void display_System_Info(int now_row, int now_col){
 
 short check_running_collector(void* result, char* type){
     DateInfo log_date;
-    log_date = (strcmp(type, "CPU") == 0) ? ((CPU_Result*) result)->date : ((MEM_Result*) result)->date;
+    // char buf[100] = {'\0'};
+    log_date = (strcmp(type, "CPU") == 0) ? ((CPU_Result*) result)->date : ((MEM_Info*) result)->date;
     if (log_date.sec != before_sec) {
         same_sec_cnt = 0;
         before_sec = log_date.sec;
         return 1;
     } else {
-        if (same_sec_cnt > 2) {
+        if (same_sec_cnt > 3) {
+            before_sec = log_date.sec;
             return 0;
         } else {
             same_sec_cnt++;
@@ -229,22 +234,21 @@ short check_running_collector(void* result, char* type){
     return 0;
 }
 
-void display_CPU_Info(struct winsize* wbuf, short* line, int temp_duration, int usage_duration, int now_row, int now_col){
+void display_CPU_Info(struct winsize* wbuf, int* status, int temp_duration, int usage_duration, int now_row, int now_col){
     CPU_Result cpu_info = get_CPU_Information(1, 1);
     CPU_Result avg_cpu_info = get_CPU_Information(temp_duration, usage_duration);
-    int status = check_running_collector(&cpu_info, "CPU");
     char buf[LEN] = { '\0' };
-    
     // Print CPU Temperatrue
     attron(COLOR_PAIR(1));
-    move(now_row + (*line), 0);
+    move(now_row + 2, 0);
     hline(' ' , wbuf->ws_col);
-    move(now_row + (*line)++, now_col);
+    move(now_row + 2, now_col);
     addstr("Temperature");
     attroff(COLOR_PAIR(1));
-    move(now_row + (*line)++, now_col);
+    move(now_row + 3, now_col);
     hline(' ', wbuf->ws_col);
-    if (status == 1){       
+    *status = check_running_collector(&cpu_info, "CPU");
+    if (*status == 1){       
         addstr("CPU:      [");
         for (int i = 0; i < wbuf->ws_col * BAR_RATIO; (i++ < (wbuf->ws_col*BAR_RATIO*(cpu_info.temp / 90))) ? addstr("#") : addstr(" "));
         addstr("]");
@@ -252,7 +256,7 @@ void display_CPU_Info(struct winsize* wbuf, short* line, int temp_duration, int 
         sprintf(buf, " %.1f Celsius", cpu_info.temp);
         addstr(buf);
         (cpu_info.temp >= CPU_TEMP_CRITICAL_POINT) ? attroff(COLOR_PAIR(2) | A_BOLD) : 0;
-        move(now_row + (*line), now_col);
+        move(now_row + 4, now_col);
         hline(' ', wbuf->ws_col);
         addstr("CPU(AVG): [");
         for (int i = 0; i < wbuf->ws_col * BAR_RATIO; (i++ < (wbuf->ws_col*BAR_RATIO*(avg_cpu_info.temp / 90))) ? addstr("#") : addstr(" "));
@@ -261,28 +265,27 @@ void display_CPU_Info(struct winsize* wbuf, short* line, int temp_duration, int 
         sprintf(buf, " %.1f Celsius ", avg_cpu_info.temp);
         addstr(buf);
         (avg_cpu_info.temp >= CPU_TEMP_CRITICAL_POINT) ? attroff(COLOR_PAIR(2) | A_BOLD) : 0;
-        move(now_row + (*line)++, wbuf->ws_col * (BAR_RATIO + 0.25));
+        move(now_row + 4, wbuf->ws_col * (BAR_RATIO + 0.25));
         sprintf(buf, "(Duration: %d sec.)", temp_duration);
         addstr(buf);
     } else {
         hline(' ', wbuf->ws_col);
-        addstr("    - Resources status collector program is not running.");
-        move(now_row + (*line)++, now_col);
+        addstr("    - Resources collector program is not running.");
+        move(now_row + 4, now_col);
         hline(' ', wbuf->ws_col);
         addstr("    - Please check whether the program is running.");
     }
-    (*line)++;
 
     // Print CPU Usage (instantaneous; %)
     attron(COLOR_PAIR(1));
-    move(now_row + (*line), 0);
+    move(now_row + 6, 0);
     hline(' ', wbuf->ws_col);
-    move(now_row + (*line)++, now_col);
+    move(now_row + 6, now_col);
     addstr("CPU / Memory Usage");
     attroff(COLOR_PAIR(1));
-    move(now_row + (*line)++, now_col);
+    move(now_row + 7, now_col);
     hline(' ', wbuf->ws_col);
-    if (status == 1){
+    if (*status == 1){
         addstr("CPU:      [");
         for (int i = 0; i < wbuf->ws_col * BAR_RATIO; (i++ < (wbuf->ws_col*BAR_RATIO*(cpu_info.usage / 100))) ? addstr("#") : addstr(" "));
         addstr("]");
@@ -291,7 +294,7 @@ void display_CPU_Info(struct winsize* wbuf, short* line, int temp_duration, int 
         addstr(buf);
         (cpu_info.usage >= CPU_USAGE_CRITICAL_PERCENT) ? attroff(COLOR_PAIR(2) | A_BOLD) : 0;
         // Print CPU Usage (Average during entered duration; %)
-        move(now_row + (*line), now_col);
+        move(now_row + 8, now_col);
         hline(' ', wbuf->ws_col);
         sprintf(buf, "CPU(AVG): [");
         addstr(buf);
@@ -301,23 +304,27 @@ void display_CPU_Info(struct winsize* wbuf, short* line, int temp_duration, int 
         sprintf(buf, " %5.1f%%", avg_cpu_info.usage);
         addstr(buf);
         (avg_cpu_info.usage >= CPU_USAGE_CRITICAL_PERCENT) ? attroff(COLOR_PAIR(2) | A_BOLD) : 0;
-        move(now_row + (*line)++, wbuf->ws_col * (BAR_RATIO + 0.2));
+        move(now_row + 8, wbuf->ws_col * (BAR_RATIO + 0.2));
         sprintf(buf, "(Duration: %d sec.)", usage_duration);
         addstr(buf);
     } else {
         hline(' ', wbuf->ws_col);
-        addstr("    - Resources status collector program is not running.");
-        move(now_row + (*line)++, now_col);
+        move(now_row + 8, now_col);
+        hline(' ', wbuf->ws_col);
+        addstr("    - Resources collector program is not running.");
+        move(now_row + 9, now_col);
         hline(' ', wbuf->ws_col);
         addstr("    - Please check whether the program is running.");
+        move(now_row + 10, now_col);
+        hline(' ', wbuf->ws_col);
     }
 }
 
-void display_MEM_Info(struct winsize* wbuf, short* line, int now_row, int now_col, UNIT MEM_unit, UNIT SWAP_unit){
+void display_MEM_Info(struct winsize* wbuf, int now_row, int now_col, UNIT MEM_unit, UNIT SWAP_unit){
     MEM_Info mem_info = get_Mem_Information(1);
     char buf[LEN] = { '\0' };
     // Print Physical Memeory Usage
-    move(now_row + (*line), now_col);
+    move(now_row + 9, now_col);
     hline(' ', wbuf->ws_col);
     addstr("MEM:      [");
     for (int i = 0; i < wbuf->ws_col * BAR_RATIO; (i++ < (wbuf->ws_col*BAR_RATIO*((mem_info.size.mem_total - mem_info.size.mem_free) / (double)mem_info.size.mem_total))) ? addstr("#") : addstr(" "));
@@ -327,7 +334,7 @@ void display_MEM_Info(struct winsize* wbuf, short* line, int now_row, int now_co
     sprintf(buf, " %5.1lf%%", ((mem_info.size.mem_total - mem_info.size.mem_free) / (double)mem_info.size.mem_total) * 100);
     addstr(buf);
     ((((mem_info.size.mem_total - mem_info.size.mem_free) / (double)mem_info.size.mem_total) * 100) >= MEM_USAGE_CRITICAL_PERCENT) ? attroff(COLOR_PAIR(2) | A_BOLD) : 0;
-    move(now_row + (*line)++, wbuf->ws_col * (BAR_RATIO + 0.2));
+    move(now_row + 9, wbuf->ws_col * (BAR_RATIO + 0.2));
     addstr("(");
     ((((mem_info.size.mem_total - mem_info.size.mem_free) / (double)mem_info.size.mem_total) * 100) >= MEM_USAGE_CRITICAL_PERCENT) ? attron(COLOR_PAIR(2) | A_BOLD) : 0;
     // Change capacity color if usage >= MEM USAGE CRITICAL POINT
@@ -338,7 +345,7 @@ void display_MEM_Info(struct winsize* wbuf, short* line, int now_row, int now_co
     addstr(buf);
 
     // Print Swap Memroy Usage
-    move(now_row + (*line), now_col);
+    move(now_row + 10, now_col);
     hline(' ', wbuf->ws_col);
     addstr("SWAP:     [");
     for (int i = 0; i < wbuf->ws_col * BAR_RATIO; (i++ < (wbuf->ws_col*BAR_RATIO*((mem_info.size.swap_total - mem_info.size.swap_free) / (double)mem_info.size.swap_total))) ? addstr("#") : addstr(" "));
@@ -352,7 +359,7 @@ void display_MEM_Info(struct winsize* wbuf, short* line, int now_row, int now_co
     }
     addstr(buf);
     ((((mem_info.size.swap_total - mem_info.size.swap_free) / (double)mem_info.size.swap_total) * 100) > SWAP_USAGE_CRITICAL_PERCENT) ? attroff(COLOR_PAIR(2) | A_BOLD) : 0;
-    move(now_row + (*line)++, wbuf->ws_col * (BAR_RATIO + 0.2));
+    move(now_row + 10, wbuf->ws_col * (BAR_RATIO + 0.2));
     addstr("(");
     ((((mem_info.size.swap_total - mem_info.size.swap_free) / (double)mem_info.size.swap_total) * 100) > SWAP_USAGE_CRITICAL_PERCENT) ? attron(COLOR_PAIR(2) | A_BOLD) : 0;
     // Change capacity color if usage >= SWAP USAGE CRITICAL POINT
@@ -360,8 +367,7 @@ void display_MEM_Info(struct winsize* wbuf, short* line, int now_row, int now_co
     addstr(buf);
     ((((mem_info.size.swap_total - mem_info.size.swap_free) / (double)mem_info.size.swap_total) * 100) > SWAP_USAGE_CRITICAL_PERCENT) ? attroff(COLOR_PAIR(2) | A_BOLD) : 0;
     sprintf(buf, " / %.2lf%s)", convert_Size_Unit(mem_info.size.swap_total, SWAP_unit), unitMap[(int)SWAP_unit].str);
-    addstr(buf);
-    (*line)++;       
+    addstr(buf);  
 }
 
 NET_Result* display_NET_Info(struct winsize* wbuf, NET_Result *net_info, short* line, int now_row, int now_col) {

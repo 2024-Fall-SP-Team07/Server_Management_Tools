@@ -1,9 +1,9 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -g
+CFLAGS = -Wall -Wextra -Werror
 LINK = -lncurses
 
-TARGET = resources_status_display
-SRCS = 00_main_analysis.c common.c cpu_info_from_log.c mem_info_from_log.c resources_display.c sys_info.c disk_info.c
+TARGET = resources_monitor
+SRCS = 00_resources_monitor.c common.c cpu_info_from_log.c mem_info_from_log.c resources_display.c sys_info.c disk_info.c network_info.c
 OBJS = $(SRCS:.c=.o)
 
 all: $(TARGET)

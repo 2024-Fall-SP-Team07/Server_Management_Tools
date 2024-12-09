@@ -9,6 +9,6 @@
 
 void *write_Mem_Information();
 MEM_Size get_Mem_Usage();
-void allocation_Value_to_Var(MEM_Size*, char*, long long);
+void allocation_Value_to_Var(MEM_Size*, char*, unsigned long);
 
 #endif

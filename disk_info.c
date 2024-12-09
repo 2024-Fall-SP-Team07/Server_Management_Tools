@@ -14,6 +14,7 @@ DISK_Result* get_Partition_Info_List(short* partition_count){
     }
     while (fscanf(fp, "%s %s %*s %*s %*s %*s", fileSystem, path_buf) != EOF) {
         if ((res = (DISK_Result*)malloc(sizeof(DISK_Result))) == NULL){
+            fclose(fp);
             return NULL;
         }   
         if (strncmp("/dev", fileSystem, 4) != 0 && strncmp("tmpfs", fileSystem, 5) != 0) {
@@ -37,6 +38,7 @@ DISK_Result* get_Partition_Info_List(short* partition_count){
             cur = cur->next;
         }
     }
+    fclose(fp);
     (*partition_count) = cnt;
     return head;
 }

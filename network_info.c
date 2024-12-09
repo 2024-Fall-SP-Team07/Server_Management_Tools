@@ -33,6 +33,7 @@ void get_Net_Byte(NET_Result* net_info){
             cur = cur->next;
         }
     }
+    fclose(fp);
 }
 
 NET_Result* get_IPv4(NET_Result* priv_data, short* max_length, short* ifa_count){

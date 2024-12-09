@@ -1,17 +1,18 @@
-test_collector.out: 00_main_collector.o cpu_info_to_log.o common.o mem_info_to_log.o
-	gcc -o test_collector.out 00_main_collector.o cpu_info_to_log.o common.o mem_info_to_log.o
+CC = gcc
+CFLAGS = -Wall -Wextra -Werror
+LINK = -lncurses -lpthread
 
-00_main.o: common.h cpu_info_to_log.h 00_main_collector.c
-	gcc -c 00_main_collector.c
+TARGET = resources_collector
+SRCS = 00_resources_collector.c common.c cpu_info_to_log.c mem_info_to_log.c
+OBJS = $(SRCS:.c=.o)
 
-cpu_info_to_log.o: cpu_info_to_log.c cpu_info_to_log.h
-	gcc -c cpu_info_to_log.c
+all: $(TARGET)
 
-common.o: common.c common.h
-	gcc -c common.c
+$(TARGET): $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LINK)
 
-mem_info_to_log.o: mem_info_to_log.c mem_info_to_log.h
-	gcc -c mem_info_to_log.c
+%.o : %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm *.o test*.out
+	rm -f $(OBJS) $(TARGET)

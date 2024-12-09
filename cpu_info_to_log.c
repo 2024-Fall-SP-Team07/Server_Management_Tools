@@ -16,7 +16,7 @@
 #include <dirent.h>
 
 CPU_Usage get_CPU_Jiffies(DateInfo* date){
-    long long user = 0, nice = 0, system = 0, idle = 0, iowait = 0, irq = 0, softirq = 0, steal = 0, guest = 0, guest_nice = 0;
+    unsigned long user = 0, nice = 0, system = 0, idle = 0, iowait = 0, irq = 0, softirq = 0, steal = 0, guest = 0, guest_nice = 0;
     CPU_Usage usage;
     FILE *fp = NULL;
     ((fp = fopen("/proc/stat", "r")) == NULL) ? printf("%s\n", exception(-1, "get_CPU_Jiffies", "/proc/stat", date)) : 0; // /proc/stat File Open Error
@@ -38,6 +38,7 @@ void *write_CPU_Information(){
     ((fd = open(CPU_INFO_LOG, O_WRONLY | O_CREAT | O_APPEND, (S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP ) & (~S_IRWXO))) == -1) ? printf("%s\n", exception(-1, "write_CPU_Information", "CPU Information Log", &(content.date))) : 0; // Create or Open log file (640)
     (write(fd, &content, sizeof(CPU_Info)) != sizeof(CPU_Info)) ? printf("%s\n", exception(-3, "write_CPU_Information", "CPU Information Log", &(content.date))) : 0; // Save CPU Information (Temp, Jiff.)
     close(fd);
+    return NULL;
 }
 
 float get_CPU_Temperature(DateInfo* date){

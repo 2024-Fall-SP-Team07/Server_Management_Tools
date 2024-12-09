@@ -14,8 +14,8 @@ void get_Hostname(char* buf, int size){
         fprintf(stderr, "%s\n", exception(-1, "get_Hostname", "/etc/hostname", &date));
     }
     fgets(buf, size, fp);
-    buf[strlen(buf) - 1] = '\0';
     fclose(fp);
+    buf[strlen(buf) - 1] = '\0';
 }
 
 void get_ProductName(char* buf, int size){
@@ -26,8 +26,8 @@ void get_ProductName(char* buf, int size){
         fprintf(stderr, "%s\n", exception(-1, "get_ProductName", "/sys/class/dmi/id/product_name", &date));
     }
     fgets(buf, size, fp);
-    buf[strlen(buf) - 1] = '\0';
     fclose(fp);
+    buf[strlen(buf) - 1] = '\0';
 }
 
 void get_SystemTime(char* buf){
