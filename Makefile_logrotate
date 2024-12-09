@@ -2,8 +2,8 @@ CC = gcc
 CFLAGS = -Wall -Wextra -Werror
 LINK = -lncurses
 
-TARGET = resources_monitor
-SRCS = 00_resources_monitor.c common.c cpu_info_from_log.c mem_info_from_log.c resources_display.c sys_info.c disk_info.c network_info.c
+TARGET = logrotate
+SRCS = logrotate_main.c logrotate.c
 OBJS = $(SRCS:.c=.o)
 
 all: $(TARGET)
