@@ -2,8 +2,8 @@ CC = gcc
 CFLAGS = -Wall -Wextra -Werror
 LINK = -lncurses
 
-TARGET = logCheck
-SRCS = log_check_final.c log_check.c
+TARGET = logcheck
+SRCS = log_check_final.c
 OBJS = $(SRCS:.c=.o)
 
 all: $(TARGET)
