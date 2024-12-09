@@ -111,6 +111,7 @@ void display_users_with_ncurses(const char users[MAX_USERS][256], int total_user
 
        // Get terminal size
        int rows, cols;
+       (void)cols;
        getmaxyx(stdscr, rows, cols);
 
 
