@@ -232,6 +232,26 @@ int main() {
     FileLog *logs = NULL;
     int count = 0, log_count = 0;
 
+    //파일이 없을 때 -> 파일이 없음을 출력하고 q키를 입력하면 종료
+    struct stat file_stat;
+    if (stat(input_file, &file_stat) == -1) {
+        initscr();
+        noecho();
+        cbreak();
+
+        mvprintw(0, 0, "Error: file_permissions.txt does not exist.");
+        mvprintw(1, 0, "Press 'q' to quit.");
+        refresh();
+
+        while (1) {
+            int ch = getch();
+            if (ch == 'q') {
+                endwin();
+                return EXIT_FAILURE;
+            }
+        }
+    }
+
     if (parse_permissions(input_file, &permissions, &count) == -1) {
         return EXIT_FAILURE;
     }
