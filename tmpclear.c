@@ -368,6 +368,7 @@ int main()
     initscr();
     cbreak();
     curs_set(0);
+    noecho();
 
     int ch;
     int l = 0;
@@ -406,17 +407,13 @@ int main()
         var_log_deleted_files_count = cleanup_log_files("/var/log", 365, var_log_deleted_files_count);
         mvprintw(l++, 42, "number of deleted file : %d", var_log_deleted_files_count);
         
-        mvprintw(l, 0, "Enter any key to see result");
-        getch();
-
-        clear();
         total_deleted_files = tmp_deleted_files_count + var_tmp_deleted_files_count + var_cache_deleted_files_count + var_log_deleted_files_count;
         snprintf(message, sizeof(message), "Deleted %d tmp files.", total_deleted_files);
-        mvprintw(LINES / 2 - 1, (COLS - strlen(message)) / 2, "%s", message);
+        mvprintw(5 + (LINES - 5) / 2 - 1, (COLS - strlen(message)) / 2, "%s", message);
         snprintf(message, sizeof(message), "details at /var/log/00_Server_Management/deleted_tmp_files.log");
-        mvprintw(LINES / 2, (COLS - strlen(message)) / 2, "%s", message);
+        mvprintw(5 + (LINES - 5) / 2, (COLS - strlen(message)) / 2, "%s", message);
         snprintf(message, sizeof(message), "To restore main screen, Press \"q\"");
-        mvprintw(LINES / 2 + 1, (COLS - strlen(message)) / 2, "%s", message);
+        mvprintw(5 + (LINES - 5) / 2 + 1, (COLS - strlen(message)) / 2, "%s", message);
         refresh();
     }
     else
